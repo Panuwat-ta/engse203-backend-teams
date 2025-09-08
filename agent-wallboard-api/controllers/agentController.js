@@ -115,11 +115,28 @@ const agentController = {
       const { status, reason } = req.body;
 
       // TODO: หา agent จาก id
+      const agent = agents.get(id);
+
       // TODO: ตรวจสอบว่า agent มีอยู่ไหม
-      // TODO: validate status ด้วย AGENT_STATUS  
+      if (!agent) {
+        return sendError(res, API_MESSAGES.AGENT_NOT_FOUND, 404);
+      }
+      // TODO: validate status ด้วย AGENT_STATUS 
+      if (!Object.values(AGENT_STATUS).includes(status)) {
+        return sendError(res, `Invalid status. Valid: ${Object.values(AGENT_STATUS).join(', ')}`, 400);
+      }
       // TODO: ตรวจสอบ valid transition ด้วย VALID_STATUS_TRANSITIONS
+      const currentStatus = agent.status;
+      const validTransitions = VALID_STATUS_TRANSITIONS[currentStatus];
       // TODO: เรียก agent.updateStatus(status, reason)
-      // TODO: ส่ง response กลับ
+      if (!validTransitions.includes(status)) {
+        // TODO: ส่ง response กลับ
+        return sendError(res,
+          `Cannot change from ${currentStatus} to ${status}. Valid: ${validTransitions.join(', ')}`,
+          400
+        );
+      }
+
 
       return sendError(res, 'TODO: Implement updateAgentStatus function', 501);
     } catch (error) {
