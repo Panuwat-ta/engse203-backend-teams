@@ -137,8 +137,8 @@ const agentController = {
         );
       }
 
-
-      return sendError(res, 'TODO: Implement updateAgentStatus function', 501);
+      //Issue 2: TODO Functions Return 501 Error
+      return sendSuccess(res, 'Success message', data);
     } catch (error) {
       console.error('Error in updateAgentStatus:', error);
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);

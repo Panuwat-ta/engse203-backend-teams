@@ -97,26 +97,22 @@ const validateAgent = (req, res, next) => {
 // 🔄 TODO #5: นักศึกษาทำเอง (10 นาที)
 const validateStatusUpdate = (req, res, next) => {
   // TODO: implement ตาม pattern ของ validateAgent
-  const validateStatusUpdate = (req, res, next) => {
-    const { error, value } = schemas.statusUpdate.validate(req.body, {
-      abortEarly: false,
-      stripUnknown: true
-    });
+  const { error, value } = schemas.statusUpdate.validate(req.body, {
+    abortEarly: false,
+    stripUnknown: true
+  });
 
-    if (error) {
-      const validationErrors = error.details.map(detail => ({
-        field: detail.path[0],
-        message: detail.message
-      }));
+  if (error) {
+    const validationErrors = error.details.map(detail => ({
+      field: detail.path[0],
+      message: detail.message
+    }));
 
-      return sendError(res, 'Status validation failed', 400, validationErrors);
-    }
+    return sendError(res, 'Status validation failed', 400, validationErrors);
+  }
 
-    req.body = value;
-    next();
-  };
-
-  return sendError(res, 'TODO: Implement validateStatusUpdate middleware', 501);
+  req.body = value;
+  next();
 };
 
 module.exports = {
