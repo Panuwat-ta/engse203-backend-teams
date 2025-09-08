@@ -14,7 +14,7 @@ const schemas = {
         'string.pattern.base': 'Agent code must be in format A001 (letter + 3 digits)',
         'any.required': 'Agent code is required'
       }),
-    
+
     name: Joi.string()
       .min(2)
       .max(100)
@@ -24,7 +24,7 @@ const schemas = {
         'string.max': 'Name cannot exceed 100 characters',
         'any.required': 'Name is required'
       }),
-    
+
     email: Joi.string()
       .email()
       .required()
@@ -32,14 +32,14 @@ const schemas = {
         'string.email': 'Please provide a valid email address',
         'any.required': 'Email is required'
       }),
-    
+
     department: Joi.string()
       .valid(...DEPARTMENTS)
       .default('General')
       .messages({
         'any.only': `Department must be one of: ${DEPARTMENTS.join(', ')}`
       }),
-    
+
     skills: Joi.array()
       .items(Joi.string().min(2).max(50))
       .default([])
@@ -51,15 +51,26 @@ const schemas = {
   // 🔄 TODO #4: นักศึกษาทำเอง (15 นาที)
   statusUpdate: Joi.object({
     // TODO: สร้าง validation สำหรับ status update
-    // Requirements:
-    // 1. status ต้องเป็น valid AGENT_STATUS
-    // 2. reason เป็น optional string ไม่เกิน 200 ตัวอักษร
-    // 3. ใส่ error messages ที่เหมาะสม
-    
-    // Hint structure:
-    // status: Joi.string().valid(...).required().messages({...}),
-    // reason: Joi.string().max(200).optional().messages({...})
+    status: Joi.string()
+      .valid(...Object.values(AGENT_STATUS))
+      // Requirements:
+      .required()
+      .messages({
+        // 1. status ต้องเป็น valid AGENT_STATUS
+        'any.only': `Status must be one of: ${Object.values(AGENT_STATUS).join(', ')}`,
+        'any.required': 'Status is required'
+      }),
+
+    reason: Joi.string()
+      .max(200)
+      .optional()
+      // 2. reason เป็น optional string ไม่เกิน 200 ตัวอักษร
+      .messages({
+        // 3. ใส่ error messages ที่เหมาะสม
+        'string.max': 'Reason cannot exceed 200 characters'
+      })
   })
+
 };
 
 // Validation middleware functions
@@ -87,7 +98,7 @@ const validateAgent = (req, res, next) => {
 const validateStatusUpdate = (req, res, next) => {
   // TODO: implement ตาม pattern ของ validateAgent
   // Hint: ใช้ schemas.statusUpdate แทน schemas.agent
-  
+
   return sendError(res, 'TODO: Implement validateStatusUpdate middleware', 501);
 };
 
