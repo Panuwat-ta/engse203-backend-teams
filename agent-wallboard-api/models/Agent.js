@@ -117,6 +117,7 @@ function initializeSampleData() {
   sampleAgents.forEach(data => {
     const agent = new Agent(data);
     agents.set(agent.id, agent);
+    console.log(`🆔 Agent ${agent.agentCode} has ID: ${agent.id}`);
   });
 
   console.log(`✅ Initialized ${agents.size} sample agents`);
