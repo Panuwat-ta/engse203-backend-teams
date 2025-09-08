@@ -24,19 +24,26 @@ const agentController = {
   },
 
   // 🔄 TODO #1: นักศึกษาทำเอง (10 นาที)
-  // GET /api/agents
+  // Solution hints:
   getAllAgents: (req, res) => {
     try {
-      // TODO: ดึงข้อมูล agents ทั้งหมดจาก Map
-      // Hint: ใช้ Array.from(agents.values())
-      
-      // TODO: Filter ตาม query parameters
-      // Hint: req.query.status และ req.query.department
-      
-      // TODO: ส่ง response ด้วย sendSuccess
-      // Hint: sendSuccess(res, message, data)
-      
-      return sendError(res, 'TODO: Implement getAllAgents function', 501);
+      const { status, department } = req.query;
+      let agentList = Array.from(agents.values());
+
+      // Filter by status
+      if (status) {
+        agentList = agentList.filter(agent => agent.status === status);
+      }
+
+      // Filter by department  
+      if (department) {
+        agentList = agentList.filter(agent => agent.department === department);
+      }
+
+      console.log(`📋 Retrieved ${agentList.length} agents`);
+      return sendSuccess(res, 'Agents retrieved successfully',
+        agentList.map(agent => agent.toJSON())
+      );
     } catch (error) {
       console.error('Error in getAllAgents:', error);
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
@@ -51,15 +58,15 @@ const agentController = {
 
       // TODO: ตรวจสอบว่า agentCode ซ้ำไหม
       // Hint: ใช้ Array.from(agents.values()).find()
-      
+
       // TODO: สร้าง Agent ใหม่
       // Hint: const newAgent = new Agent(agentData);
-      
+
       // TODO: เก็บลง Map
       // Hint: agents.set(newAgent.id, newAgent);
-      
+
       // TODO: ส่ง response พร้อม status 201
-      
+
       return sendError(res, 'TODO: Implement createAgent function', 501);
     } catch (error) {
       console.error('Error in createAgent:', error);
@@ -79,15 +86,15 @@ const agentController = {
       }
 
       const { name, email, department, skills } = req.body;
-      
+
       // Update allowed fields
       if (name) agent.name = name;
       if (email) agent.email = email;
       if (department) agent.department = department;
       if (skills) agent.skills = skills;
-      
+
       agent.updatedAt = new Date();
-      
+
       console.log(`✏️ Updated agent: ${agent.agentCode}`);
       return sendSuccess(res, API_MESSAGES.AGENT_UPDATED, agent.toJSON());
     } catch (error) {
@@ -129,7 +136,7 @@ const agentController = {
       }
 
       agents.delete(id);
-      
+
       console.log(`🗑️ Deleted agent: ${agent.agentCode} - ${agent.name}`);
       return sendSuccess(res, API_MESSAGES.AGENT_DELETED);
     } catch (error) {
@@ -144,7 +151,7 @@ const agentController = {
     try {
       const agentList = Array.from(agents.values());
       const totalAgents = agentList.length;
-      
+
       const statusCounts = {};
       Object.values(AGENT_STATUS).forEach(status => {
         statusCounts[status] = agentList.filter(agent => agent.status === status).length;
