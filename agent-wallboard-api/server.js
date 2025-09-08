@@ -4,6 +4,11 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
+const { agents } = require('./models/Agent');
+const logger = require('./middleware/logger'); //import middleware
+const apiLimiter = require('./middleware/rateLimiter');
+
+
 
 // Import routes และ middleware
 const routes = require('./routes');
@@ -14,6 +19,11 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet());
+// ใช้งานก่อน route ทั้งหมด
+app.use(logger);
+// ป้องกันการยิง request ถี่เกินไป
+app.use('/api', apiLimiter);
+
 
 // CORS configuration
 app.use(cors({
@@ -33,6 +43,8 @@ if (process.env.NODE_ENV !== 'production') {
 // Performance monitoring
 app.use(performanceMonitor);
 
+
+
 // Root endpoint
 app.get('/', (req, res) => {
   res.json({
@@ -47,6 +59,17 @@ app.get('/', (req, res) => {
       health: '/api/health',
       docs: '/api/docs'
     }
+  });
+});
+// 1. Enhanced Health Check
+app.get('/api/health', (req, res) => {
+  res.json({
+    success: true,
+    status: 'OK',
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
+    agentCount: agents.size,
+    timestamp: new Date().toISOString()
   });
 });
 

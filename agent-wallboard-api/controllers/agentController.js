@@ -196,6 +196,7 @@ const agentController = {
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
     }
   }
+
 };
 
 module.exports = agentController;
