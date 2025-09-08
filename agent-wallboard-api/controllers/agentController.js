@@ -57,15 +57,19 @@ const agentController = {
       const agentData = req.body;
 
       // TODO: ตรวจสอบว่า agentCode ซ้ำไหม
-      // Hint: ใช้ Array.from(agents.values()).find()
+      const existingAgent = Array.from(agents.values())
+        .find(agent => agent.agentCode === agentData.agentCode);
 
+      if (existingAgent) {
+        return sendError(res, `Agent code ${agentData.agentCode} already exists`, 409);
+      }
       // TODO: สร้าง Agent ใหม่
-      // Hint: const newAgent = new Agent(agentData);
-
+      const newAgent = new Agent(agentData);
       // TODO: เก็บลง Map
-      // Hint: agents.set(newAgent.id, newAgent);
+      agents.set(newAgent.id, newAgent);
 
       // TODO: ส่ง response พร้อม status 201
+      return sendSuccess(res, API_MESSAGES.AGENT_CREATED, newAgent.toJSON(), 201);
 
       return sendError(res, 'TODO: Implement createAgent function', 501);
     } catch (error) {
