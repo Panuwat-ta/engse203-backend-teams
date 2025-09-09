@@ -11,6 +11,15 @@ router.get('/', agentController.getAllAgents);
 // GET /api/agents/status/summary - ต้องมาก่อน /:id route
 router.get('/status/summary', agentController.getStatusSummary);
 
+//Agent Search API วางผิดที่ยิงยังไงก็ไม่เจอ??ทำไมครับ
+router.get('/search', agentController.searchAgents);
+
+// GET /api/agents/department/stats - Department statistics
+router.get('/department/stats', agentController.getDepartmentStatistics);
+
+// GET /api/agents/:id/status/history - Get status change history
+router.get('/:id/status/history', agentController.getStatusHistory);
+
 // GET /api/agents/:id - Get specific agent
 router.get('/:id', agentController.getAgentById);
 
@@ -25,5 +34,9 @@ router.patch('/:id/status', validateStatusUpdate, agentController.updateAgentSta
 
 // DELETE /api/agents/:id - Delete agent
 router.delete('/:id', agentController.deleteAgent);
+
+
+
+
 
 module.exports = router;

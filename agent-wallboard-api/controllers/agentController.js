@@ -195,6 +195,82 @@ const agentController = {
       console.error('Error in getStatusSummary:', error);
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
     }
+  },
+
+
+  // Agent Search API
+  searchAgents: (req, res) => {
+    console.log('🔍 [searchAgents] called with query:', req.query);
+
+    const { q = '', fields = '' } = req.query;
+    const keyword = q.toLowerCase();
+    const selectedFields = fields.split(',').map(f => f.trim()).filter(f => f);
+
+    const results = Array.from(agents.values()).filter(agent => {
+      return [agent.name, agent.email, agent.agentCode].some(field =>
+        field.toLowerCase().includes(keyword)
+      );
+    });
+
+    const response = results.map(agent => {
+      const data = agent.toJSON();
+      if (selectedFields.length === 0) return data;
+
+      // คืนเฉพาะ field ที่เลือก
+      return Object.fromEntries(
+        selectedFields.map(f => [f, data[f]]).filter(([key, val]) => val !== undefined)
+      );
+    });
+
+    console.log(`✅ [searchAgents] found ${response.length} result(s)`);
+    res.json({ success: true, total: response.length, results: response });
+  },
+
+
+
+  //Department Statistics
+  getDepartmentStatistics: (req, res) => {
+    try {
+      const summary = {};
+      const agentList = Array.from(agents.values());
+
+      agentList.forEach(agent => {
+        const dept = agent.department || 'Unknown';
+        const status = agent.status || 'Unknown';
+
+        if (!summary[dept]) {
+          summary[dept] = { total: 0 };
+        }
+
+        summary[dept].total += 1;
+        summary[dept][status] = (summary[dept][status] || 0) + 1;
+      });
+
+      return sendSuccess(res, 'Department statistics retrieved successfully', {
+        summary,
+        lastUpdated: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Error in getDepartmentStatistics:', error);
+      return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
+    }
+  },
+
+  //Status History
+  getStatusHistory: (req, res) => {
+    try {
+      const { id } = req.params;
+      const agent = agents.get(id);
+
+      if (!agent) {
+        return sendError(res, API_MESSAGES.AGENT_NOT_FOUND, 404);
+      }
+
+      return sendSuccess(res, 'Status history retrieved successfully', agent.getStatusHistory());
+    } catch (error) {
+      console.error('Error in getStatusHistory:', error);
+      return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
+    }
   }
 
 };

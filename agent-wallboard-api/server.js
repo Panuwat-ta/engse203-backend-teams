@@ -4,7 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
-const { agents } = require('./models/Agent');
+//const { agents } = require('./models/Agent');
 const logger = require('./middleware/logger'); //import middleware
 const apiLimiter = require('./middleware/rateLimiter');
 
@@ -72,6 +72,7 @@ app.get('/api/health', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
 
 // API routes
 app.use('/api', routes);
