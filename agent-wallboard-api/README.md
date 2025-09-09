@@ -28,28 +28,28 @@ curl http://localhost:3001/api/health
 ```
 ## Testing & Integration
 - GET http://localhost:3001/
-![alt text](/img/api.png)
+![alt text](/agent-wallboard-api/img/api.png)
 
 - GET http://localhost:3001/api/health
-![alt text](/img/api-health.png)
+![alt text](/agent-wallboard-api/api-health.png)
 
 - GET http://localhost:3001/api/agents
-![alt text](/img/api-agents.png)
+![alt text](/agent-wallboard-api/img/api-agents.png)
 
 - GET http://localhost:3001/api/agents?status=Available
-![alt text](/img/api-agents1.png)
+![alt text](/agent-wallboard-api/img/api-agents1.png)
 
 - GET http://localhost:3001/api/agents?department=Sales
-![alt text](/img/api-agents2.png)
+![alt text](/agent-wallboard-api/img/api-agents2.png)
 
 - POST http://localhost:3001/api/agents
-![alt text](/img/post-api-agents.png)
+![alt text](/agent-wallboard-api/img/post-api-agents.png)
 
 - POST http://localhost:3001/api/agents
-![alt text](/img/post-api-agents1.png)
+![alt text](/agent-wallboard-api/img/post-api-agents1.png)
 
 - PATCH http://localhost:3001/api/agents/1757367391699dcsdcwj6l/status
-![alt text](/img/patch-api-agents.png)
+![alt text](/agent-wallboard-api/img/patch-api-agents.png)
 
 - PATCH http://localhost:3001/api/agents/1757367391699dcsdcwj6l/status
-![alt text](/img/patch-api-agents1.png)
+![alt text](/agent-wallboard-api/img/patch-api-agents1.png)
