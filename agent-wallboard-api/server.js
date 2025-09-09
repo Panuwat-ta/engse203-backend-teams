@@ -7,7 +7,10 @@ require('dotenv').config();
 //const { agents } = require('./models/Agent');
 const logger = require('./middleware/logger'); //import middleware
 const apiLimiter = require('./middleware/rateLimiter');
-
+//OpenAPI Documentation
+const { swaggerUi, specs } = require('./swagger');
+//Input Sanitization
+const sanitizeInput = require('./middleware/sanitizeinput');
 
 
 // Import routes และ middleware
@@ -23,6 +26,9 @@ app.use(helmet());
 app.use(logger);
 // ป้องกันการยิง request ถี่เกินไป
 app.use('/api', apiLimiter);
+//Swagger documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
+
 
 
 // CORS configuration
@@ -33,6 +39,8 @@ app.use(cors({
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
+//Input Sanitization
+app.use(sanitizeInput);
 app.use(express.urlencoded({ extended: true }));
 
 // Request logging (เฉพาะ development)
@@ -73,6 +81,63 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Advanced health checks with dependencies
+app.get('/api/health', async (req, res) => {
+  const [dbStatus, redisStatus, externalStatus] = await Promise.allSettled([
+    checkDatabase(),
+    checkRedis(),
+    checkExternalAPI()
+  ]);
+
+  const memory = process.memoryUsage();
+
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    dependencies: {
+      database: dbStatus.status === 'fulfilled' ? dbStatus.value : 'unreachable',
+      redis: redisStatus.status === 'fulfilled' ? redisStatus.value : 'unreachable',
+      externalAPI: externalStatus.status === 'fulfilled' ? externalStatus.value : 'unreachable'
+    },
+    memory: {
+      rss: memory.rss,
+      heapUsed: memory.heapUsed
+    }
+  });
+});
+
+// Metrics Collection Endpoint
+app.get('/api/metrics', (req, res) => {
+  const totalAgents = agents.size;
+  const activeAgents = Array.from(agents.values()).filter(a => a.status === 'Available').length;
+
+  res.json({
+    totalAgents,
+    activeAgents,
+    timestamp: new Date().toISOString(),
+    memory: process.memoryUsage(),
+    uptime: process.uptime()
+  });
+});
+
+
+// ตัวอย่างฟังก์ชันตรวจ dependencies
+async function checkDatabase() {
+  await db.ping(); // หรือ query เบา ๆ
+  return 'connected';
+}
+
+async function checkRedis() {
+  await redisClient.ping();
+  return 'connected';
+}
+
+async function checkExternalAPI() {
+  const res = await fetch('https://external-service.com/ping');
+  return res.ok ? 'connected' : 'unreachable';
+}
+//
 
 // API routes
 app.use('/api', routes);
@@ -91,10 +156,13 @@ const server = app.listen(PORT, () => {
 });
 
 // Graceful shutdown (เตรียมสำหรับ Phase 3)
-process.on('SIGTERM', () => {
+process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
+   await db.disconnect?.(); // ถ้ามี
+   await redisClient.quit?.(); // ถ้ามี
   server.close(() => {
     console.log('✅ Process terminated');
+    process.exit(0);
   });
 });
 
