@@ -4,7 +4,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
-//const { agents } = require('./models/Agent');
+const { agents } = require('./models/Agent');
 const logger = require('./middleware/logger'); //import middleware
 const apiLimiter = require('./middleware/rateLimiter');
 //OpenAPI Documentation
@@ -13,6 +13,8 @@ const { swaggerUi, specs } = require('./swagger');
 const sanitizeInput = require('./middleware/sanitizeinput');
 require('dotenv').config();//โหลด environment variables
 const mongoose = require('mongoose'); //เชื่อมต่อ MongoDB
+const http = require('http'); // สร้าง HTTP server
+const socketIo = require('socket.io'); // ใช้สำหรับ WebSocket
 
 
 // เชื่อมต่อ Local MongoDB
@@ -20,8 +22,8 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
-.then(() => console.log('✅ Connected to Local MongoDB'))
-.catch(err => console.error('❌ MongoDB connection error:', err));
+  .then(() => console.log('✅ Connected to Local MongoDB'))
+  .catch(err => console.error('❌ MongoDB connection error:', err));
 
 
 const agentSchema = new mongoose.Schema({
@@ -171,8 +173,14 @@ app.use('/api', routes);
 app.use('*', notFoundHandler);
 app.use(globalErrorHandler);
 
+
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: { origin: "http://localhost:3000" }
+});
+
 // Start server
-const server = app.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log('🚀 Agent Wallboard API Enhanced');
   console.log(`📡 Server running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
