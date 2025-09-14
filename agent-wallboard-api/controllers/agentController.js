@@ -95,43 +95,32 @@ const agentController = {
   // PATCH /api/agents/:id/status
   updateAgentStatus: async (req, res) => {
     try {
-      const { id } = req.params;
       const { status, reason } = req.body;
+      const agent = await Agent.findById(req.params.id);
+      if (!agent) return res.status(404).json({ success: false, message: 'Agent not found' });
 
-      const agent = await Agent.findById(id);
-      if (!agent) return sendError(res, API_MESSAGES.AGENT_NOT_FOUND, 404);
-
-      if (!Object.values(AGENT_STATUS).includes(status)) {
-        return sendError(
-          res,
-          `Invalid status. Valid: ${Object.values(AGENT_STATUS).join(', ')}`,
-          400
-        );
-      }
-
-      const currentStatus = agent.status;
-      const validTransitions = VALID_STATUS_TRANSITIONS[currentStatus] || [];
-      if (!validTransitions.includes(status)) {
-        return sendError(
-          res,
-          `Cannot change from ${currentStatus} to ${status}. Valid: ${validTransitions.join(', ')}`,
-          400
-        );
-      }
-
-      // Update status and add to history
+      // อัปเดต status
       agent.status = status;
+      agent.statusHistory = agent.statusHistory || [];
       agent.statusHistory.push({ status, reason, updatedAt: new Date() });
-      agent.updatedAt = new Date();
-
       await agent.save();
-      console.log(`🔄 Status updated for agent: ${agent.agentCode} -> ${status}`);
-      return sendSuccess(res, `Agent status updated to ${status}`, agent.toJSON());
+
+      // 🔴 ส่ง real-time update ผ่าน req.io
+      req.io.emit('agentStatusChanged', {
+        agentId: agent._id,
+        agentCode: agent.agentCode,
+        newStatus: agent.status,
+        timestamp: new Date()
+      });
+
+      res.json({ success: true, data: agent });
     } catch (error) {
-      console.error('Error in updateAgentStatus:', error);
-      return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
+      console.error(error);
+      res.status(500).json({ success: false, message: 'Internal server error' });
     }
   },
+
+
 
   // DELETE /api/agents/:id
   deleteAgent: async (req, res) => {

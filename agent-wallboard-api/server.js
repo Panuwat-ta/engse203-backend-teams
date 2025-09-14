@@ -46,6 +46,11 @@ const { globalErrorHandler, notFoundHandler, performanceMonitor } = require('./m
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+// สร้าง HTTP server และผูกกับ Express app
+const server = http.createServer(app);
+const io = socketIo(server, {
+  cors: { origin: "http://localhost:3001" }
+});
 
 // Security middleware
 app.use(helmet());
@@ -56,11 +61,24 @@ app.use('/api', apiLimiter);
 //Swagger documentation
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
+app.use((req, res, next) => {
+  req.io = io; // ให้ controller ใช้ io.emit ได้
+  next();
+});
+
+// WebSocket connection
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+  
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
 
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
   credentials: true
 }));
 
@@ -174,10 +192,7 @@ app.use('*', notFoundHandler);
 app.use(globalErrorHandler);
 
 
-const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: { origin: "http://localhost:3000" }
-});
+
 
 // Start server
 server.listen(PORT, "0.0.0.0", () => {
