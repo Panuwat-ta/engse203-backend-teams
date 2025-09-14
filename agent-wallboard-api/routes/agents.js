@@ -11,7 +11,7 @@ router.get('/', agentController.getAllAgents);
 // GET /api/agents/status/summary - ต้องมาก่อน /:id route
 router.get('/status/summary', agentController.getStatusSummary);
 
-//Agent Search API วางผิดที่ยิงยังไงก็ไม่เจอ??ทำไมครับ
+//Agent Search API 
 router.get('/search', agentController.searchAgents);
 
 // GET /api/agents/department/stats - Department statistics
