@@ -147,7 +147,7 @@ app.use('*', notFoundHandler);
 app.use(globalErrorHandler);
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, "0.0.0.0", () => {
   console.log('🚀 Agent Wallboard API Enhanced');
   console.log(`📡 Server running on http://localhost:${PORT}`);
   console.log(`📚 API Documentation: http://localhost:${PORT}/api/docs`);
