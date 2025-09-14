@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>WebSocket Test</title>
+</head>
+<body>
+  <h2>🔌 WebSocket Test</h2>
+
+  <!-- โหลด socket.io client จาก backend -->
+  <script src="http://localhost:3001/socket.io/socket.io.js"></script>
+  <script>
+    // ระบุ URL backend ชัดเจน
+    const socket = io("http://localhost:3001");
+
+    socket.on("connect", () => {
+      console.log("✅ Connected to backend:", socket.id);
+    });
+
+    socket.on("disconnect", () => {
+      console.log("❌ Disconnected from backend");
+    });
+
+    socket.on("agentStatusChanged", (data) => {
+      console.log("📢 Status Changed:", data);
+    });
+
+    socket.on("newMessage", (data) => {
+      console.log("💬 New Message:", data);
+    });
+  </script>
+</body>
+</html>

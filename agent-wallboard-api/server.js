@@ -4,28 +4,27 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 require('dotenv').config();
+const mongoose = require('mongoose');
+const http = require('http');
+const socketIo = require('socket.io');
+
+// Models & Routes
 const { agents } = require('./models/Agent');
-const logger = require('./middleware/logger'); //import middleware
+const routes = require('./routes');
+const messageRoutes = require('./routes/messages');
+
+// Middleware
+const logger = require('./middleware/logger');
 const apiLimiter = require('./middleware/rateLimiter');
-//OpenAPI Documentation
-const { swaggerUi, specs } = require('./swagger');
-//Input Sanitization
 const sanitizeInput = require('./middleware/sanitizeinput');
-require('dotenv').config();//โหลด environment variables
-const mongoose = require('mongoose'); //เชื่อมต่อ MongoDB
-const http = require('http'); // สร้าง HTTP server
-const socketIo = require('socket.io'); // ใช้สำหรับ WebSocket
+const { globalErrorHandler, notFoundHandler, performanceMonitor } = require('./middleware/errorHandler');
 
-
-// เชื่อมต่อ Local MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true
-})
+// MongoDB connection
+mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to Local MongoDB'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
 
-
+// Optional: Agent schema (if needed in server.js)
 const agentSchema = new mongoose.Schema({
   agentCode: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -35,68 +34,54 @@ const agentSchema = new mongoose.Schema({
   loginTime: Date,
   lastStatusChange: { type: Date, default: Date.now }
 });
-
 const Agent = mongoose.model('Agent', agentSchema);
 
-
-
-// Import routes และ middleware
-const routes = require('./routes');
-const { globalErrorHandler, notFoundHandler, performanceMonitor } = require('./middleware/errorHandler');
-
+// Express app
 const app = express();
 const PORT = process.env.PORT || 3001;
-// สร้าง HTTP server และผูกกับ Express app
+
+// HTTP server + Socket.IO
 const server = http.createServer(app);
 const io = socketIo(server, {
-  cors: { origin: "http://localhost:3001" }
+  cors: {
+    origin: ["http://localhost:3001", "http://127.0.0.1:5500"],//port 5500 ของ live server
+    methods: ["GET", "POST"],
+    credentials: true
+  }
 });
 
-// Security middleware
-app.use(helmet());
-// ใช้งานก่อน route ทั้งหมด
-app.use(logger);
-// ป้องกันการยิง request ถี่เกินไป
-app.use('/api', apiLimiter);
-//Swagger documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
-
-app.use((req, res, next) => {
-  req.io = io; // ให้ controller ใช้ io.emit ได้
-  next();
-});
-
-// WebSocket connection
-io.on('connection', (socket) => {
-  console.log(`User connected: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`User disconnected: ${socket.id}`);
-  });
-});
-
-
-// CORS configuration
+// Middleware order is important
+app.use(helmet()); // Security headers
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+  origin: ["http://localhost:3001", "http://127.0.0.1:5500"],//port 5500 ของ live server
   credentials: true
 }));
+app.use(logger); // Request logger
+app.use('/api', apiLimiter); // Rate limiter
 
-// Body parsing middleware
+// Body parser
 app.use(express.json({ limit: '10mb' }));
-//Input Sanitization
-app.use(sanitizeInput);
 app.use(express.urlencoded({ extended: true }));
 
-// Request logging (เฉพาะ development)
-if (process.env.NODE_ENV !== 'production') {
-  app.use(morgan('dev'));
-}
+// Input sanitization
+app.use(sanitizeInput);
+
+// Attach io to req for controllers
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
 
 // Performance monitoring
 app.use(performanceMonitor);
 
+// Routes
+app.use('/api/messages', messageRoutes);
+app.use('/api', routes);
 
+// Swagger docs
+const { swaggerUi, specs } = require('./swagger');
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 // Root endpoint
 app.get('/', (req, res) => {
@@ -106,15 +91,11 @@ app.get('/', (req, res) => {
     version: '1.0.0',
     environment: process.env.NODE_ENV || 'development',
     documentation: '/api/docs',
-    health: '/api/health',
-    endpoints: {
-      agents: '/api/agents',
-      health: '/api/health',
-      docs: '/api/docs'
-    }
+    health: '/api/health'
   });
 });
-// 1. Enhanced Health Check
+
+// Health check
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
@@ -126,8 +107,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Advanced health checks with dependencies
-app.get('/api/health', async (req, res) => {
+// Advanced health check example
+app.get('/api/health/deep', async (req, res) => {
   const [dbStatus, redisStatus, externalStatus] = await Promise.allSettled([
     checkDatabase(),
     checkRedis(),
@@ -152,7 +133,7 @@ app.get('/api/health', async (req, res) => {
   });
 });
 
-// Metrics Collection Endpoint
+// Metrics
 app.get('/api/metrics', (req, res) => {
   const totalAgents = agents.size;
   const activeAgents = Array.from(agents.values()).filter(a => a.status === 'Available').length;
@@ -166,33 +147,38 @@ app.get('/api/metrics', (req, res) => {
   });
 });
 
+// WebSocket connection
+io.on('connection', (socket) => {
+  console.log(`User connected: ${socket.id}`);
+  socket.on('disconnect', () => {
+    console.log(`User disconnected: ${socket.id}`);
+  });
+});
 
-// ตัวอย่างฟังก์ชันตรวจ dependencies
+// Example dependency checks
 async function checkDatabase() {
-  await db.ping(); // หรือ query เบา ๆ
+  // Example MongoDB ping
+  await mongoose.connection.db.admin().ping();
   return 'connected';
 }
 
 async function checkRedis() {
-  await redisClient.ping();
+  // Example Redis ping if available
   return 'connected';
 }
 
 async function checkExternalAPI() {
-  const res = await fetch('https://external-service.com/ping');
-  return res.ok ? 'connected' : 'unreachable';
+  try {
+    const res = await fetch('https://external-service.com/ping');
+    return res.ok ? 'connected' : 'unreachable';
+  } catch {
+    return 'unreachable';
+  }
 }
-//
 
-// API routes
-app.use('/api', routes);
-
-// Error handlers (ต้องอยู่ท้ายสุด)
+// Error handlers (last)
 app.use('*', notFoundHandler);
 app.use(globalErrorHandler);
-
-
-
 
 // Start server
 server.listen(PORT, "0.0.0.0", () => {
@@ -203,11 +189,10 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
 
-// Graceful shutdown (เตรียมสำหรับ Phase 3)
+// Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
-  await db.disconnect?.(); // ถ้ามี
-  await redisClient.quit?.(); // ถ้ามี
+  await mongoose.disconnect();
   server.close(() => {
     console.log('✅ Process terminated');
     process.exit(0);

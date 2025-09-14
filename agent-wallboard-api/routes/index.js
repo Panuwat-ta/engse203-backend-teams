@@ -1,6 +1,7 @@
 // routes/index.js - Routes aggregator
 const express = require('express');
 const agentRoutes = require('./agents');
+const messageRoutes = require('./messages');
 
 const router = express.Router();
 
@@ -50,5 +51,6 @@ router.get('/docs', (req, res) => {
 
 // Mount agent routes
 router.use('/agents', agentRoutes);
+router.use('/messages', messageRoutes);
 
 module.exports = router;
