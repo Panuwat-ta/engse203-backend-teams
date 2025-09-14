@@ -11,6 +11,31 @@ const apiLimiter = require('./middleware/rateLimiter');
 const { swaggerUi, specs } = require('./swagger');
 //Input Sanitization
 const sanitizeInput = require('./middleware/sanitizeinput');
+require('dotenv').config();//โหลด environment variables
+const mongoose = require('mongoose'); //เชื่อมต่อ MongoDB
+
+
+// เชื่อมต่อ Local MongoDB
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('✅ Connected to Local MongoDB'))
+.catch(err => console.error('❌ MongoDB connection error:', err));
+
+
+const agentSchema = new mongoose.Schema({
+  agentCode: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  email: { type: String, required: true },
+  department: { type: String, default: 'General' },
+  status: { type: String, default: 'Available' },
+  loginTime: Date,
+  lastStatusChange: { type: Date, default: Date.now }
+});
+
+const Agent = mongoose.model('Agent', agentSchema);
+
 
 
 // Import routes และ middleware
@@ -158,8 +183,8 @@ const server = app.listen(PORT, "0.0.0.0", () => {
 // Graceful shutdown (เตรียมสำหรับ Phase 3)
 process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
-   await db.disconnect?.(); // ถ้ามี
-   await redisClient.quit?.(); // ถ้ามี
+  await db.disconnect?.(); // ถ้ามี
+  await redisClient.quit?.(); // ถ้ามี
   server.close(() => {
     console.log('✅ Process terminated');
     process.exit(0);
