@@ -19,11 +19,24 @@ const { agents } = require('./models/Agent'); // Phase 1 in-memory data
 const AgentMongo = require('./models/AgentMongo'); // Phase 2 MongoDB model
 
 const app = express();
+const path = require('path');
+
+app.get('/test-websocket.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'test-websocket.html'));
+});
+
 const server = http.createServer(app);
 const PORT = process.env.PORT || 3001;
+const WEBSOCKET_PORT = process.env.WEBSOCKET_PORT || 3002;
 
 // Initialize WebSocket
-const io = socketServer.initialize(server);
+const io = socketServer.initialize(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 // Security middleware
 app.use(helmet());
@@ -61,7 +74,7 @@ app.get('/', (req, res) => {
     phase: 2,
     features: [
       'MongoDB persistence',
-      'Real-time WebSocket communication', 
+      'Real-time WebSocket communication',
       'Message system',
       'Agent status tracking',
       'Dashboard statistics'
@@ -76,7 +89,7 @@ app.get('/', (req, res) => {
       docs: '/api/docs'
     },
     websocket: {
-      url: `ws://localhost:${PORT}`,
+      url: `ws://localhost:${WEBSOCKET_PORT}`,
       events: ['agentStatusChanged', 'newMessage', 'dashboardUpdate']
     }
   });
@@ -86,19 +99,19 @@ app.get('/', (req, res) => {
 app.use('/api', routes);
 
 // Error handlers (ต้องอยู่ท้ายสุด)
-app.use('*', notFoundHandler);
+app.use(notFoundHandler);
 app.use(globalErrorHandler);
 
 // Data migration function
 async function migrateFromMemoryToMongo() {
   try {
     console.log('🔄 Starting migration from in-memory to MongoDB...');
-    
+
     if (agents.size === 0) {
       console.log('⚠️ No in-memory agents to migrate');
       return;
     }
-    
+
     await AgentMongo.migrateFromMemory(agents);
     console.log('✅ Migration completed successfully');
   } catch (error) {
@@ -111,13 +124,13 @@ async function migrateFromMemoryToMongo() {
 const startServer = async () => {
   try {
     console.log('🚀 Starting Agent Wallboard API Phase 2...');
-    
+
     // Connect to MongoDB
     await databaseConnection.connect();
-    
+
     // Migrate data from Phase 1 (if exists)
     await migrateFromMemoryToMongo();
-    
+
     // Start listening
     server.listen(PORT, () => {
       console.log('🎯━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -137,7 +150,7 @@ const startServer = async () => {
       console.log('   ✅ Online/offline tracking');
       console.log('🎯━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     });
-    
+
   } catch (error) {
     console.error('❌ Failed to start server:', error.message);
     process.exit(1);
@@ -147,15 +160,15 @@ const startServer = async () => {
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('🛑 SIGTERM received, shutting down gracefully');
-  
+
   // Close WebSocket connections
   if (io) {
     io.close();
   }
-  
+
   // Close database connection
   await databaseConnection.disconnect();
-  
+
   // Close HTTP server
   server.close(() => {
     console.log('✅ Process terminated gracefully');
@@ -165,15 +178,15 @@ process.on('SIGTERM', async () => {
 
 process.on('SIGINT', async () => {
   console.log('🛑 SIGINT received, shutting down gracefully');
-  
+
   // Close WebSocket connections
   if (io) {
     io.close();
   }
-  
+
   // Close database connection
   await databaseConnection.disconnect();
-  
+
   // Close HTTP server
   server.close(() => {
     console.log('✅ Process terminated gracefully');

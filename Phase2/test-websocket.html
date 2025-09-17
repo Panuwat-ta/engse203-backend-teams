@@ -82,7 +82,8 @@
         </div>
     </div>
 
-    <script src="/socket.io/socket.io.js"></script>
+    <!-- <script src="/socket.io/socket.io.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script>
         let socket = null;
         
@@ -104,7 +105,7 @@
                 socket.disconnect();
             }
             
-            socket = io('http://localhost:3001');
+            socket = io('localhost:3001'); // Adjust port if needed
             
             socket.on('connect', () => {
                 log('✅ Connected to WebSocket server');
