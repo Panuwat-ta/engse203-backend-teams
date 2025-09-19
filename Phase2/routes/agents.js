@@ -1,6 +1,6 @@
-// routes/agents.js - เชื่อม routes กับ controllers
+// routes/agents.js - Updated routes สำหรับ MongoDB
 const express = require('express');
-const agentController = require('../controllers/agentController');
+const agentController = require('../controllers/agentControllerMongo'); // เปลี่ยนเป็น MongoDB version
 const { validateAgent, validateStatusUpdate } = require('../middleware/validation');
 
 const router = express.Router();
@@ -11,17 +11,11 @@ router.get('/', agentController.getAllAgents);
 // GET /api/agents/status/summary - ต้องมาก่อน /:id route
 router.get('/status/summary', agentController.getStatusSummary);
 
-//Agent Search API วางผิดที่ยิงยังไงก็ไม่เจอ??ทำไมครับ
-router.get('/search', agentController.searchAgents);
-
-// GET /api/agents/department/stats - Department statistics
-router.get('/department/stats', agentController.getDepartmentStatistics);
-
-// GET /api/agents/:id/status/history - Get status change history
-router.get('/:id/status/history', agentController.getStatusHistory);
-
 // GET /api/agents/:id - Get specific agent
 router.get('/:id', agentController.getAgentById);
+
+// GET /api/agents/:id/history - Get agent status history
+router.get('/:id/history', agentController.getAgentStatusHistory);
 
 // POST /api/agents - Create new agent (with validation)
 router.post('/', validateAgent, agentController.createAgent);
@@ -34,9 +28,5 @@ router.patch('/:id/status', validateStatusUpdate, agentController.updateAgentSta
 
 // DELETE /api/agents/:id - Delete agent
 router.delete('/:id', agentController.deleteAgent);
-
-
-
-
 
 module.exports = router;
