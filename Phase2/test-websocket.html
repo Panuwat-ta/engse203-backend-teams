@@ -134,13 +134,17 @@
     <!-- <script src="/socket.io/socket.io.js"></script> -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js"></script>
     <script>
+         const backend_URL = 'http://172.22.2.22:3001';
         let socket = null;
 
         function log(message) {
             const eventLog = document.getElementById('eventLog');
             const timestamp = new Date().toLocaleTimeString();
+            const logMessage = `[${timestamp}] ${message}`;
             eventLog.innerHTML += `<div>[${timestamp}] ${message}</div>`;
             eventLog.scrollTop = eventLog.scrollHeight;
+            console.log(logMessage);
+            
         }
 
         function updateConnectionStatus(status) {
@@ -154,7 +158,7 @@
                 socket.disconnect();
             }
 
-            socket = io('http://172.21.91.53:3001'); // Must changed to WSL IP Address.
+            socket = io(backend_URL); // Must changed to WSL IP Address.
 
             socket.on('connect', () => {
                 log('✅ Connected to WebSocket server');
@@ -233,7 +237,7 @@
 
             try {
                 // Get agent ID first
-                const agentsResponse = await fetch('/api/agents');
+                const agentsResponse = await fetch(`${backend_URL}/api/agents`);
                 const agentsData = await agentsResponse.json();
                 const agent = agentsData.data.find(a => a.agentCode === agentCode);
 
@@ -243,7 +247,7 @@
                 }
 
                 // Update status
-                const response = await fetch(`/api/agents/${agent._id}/status`, {
+                const response = await fetch(`${backend_URL}/api/agents/${agent._id}/status`, {
                     method: 'PATCH',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ status, reason })
@@ -268,7 +272,8 @@
             const type = document.getElementById('messageType').value;
 
             try {
-                const response = await fetch('/api/messages', {
+                const response = await fetch(`${backend_URL}/api/messages`, {
+
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ from, to, message, type })
