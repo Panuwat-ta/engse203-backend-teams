@@ -23,7 +23,7 @@ const agentController = {
     }
   },
 
-// 🔄 TODO #1: นักศึกษาทำเอง (10 นาที)
+  // 🔄 TODO #1: นักศึกษาทำเอง (10 นาที)
   // GET /api/agents
   getAllAgents: (req, res) => {
     try {
@@ -37,13 +37,11 @@ const agentController = {
       // Hint: sendSuccess(res, message, data)
 
 
+      // 1. Get all agents from Map
       const { status, department } = req.query;
-      console.log('📖 Getting all agents with filters:', { status, department });
-
-      // 1. ดึงข้อมูล agents ทั้งหมดจาก Map
       let agentList = Array.from(agents.values());
 
-      // 2. Apply filters ตาม query parameters
+      // 2. Apply filters
       if (status) {
         agentList = agentList.filter(agent => agent.status === status);
       }
@@ -51,10 +49,7 @@ const agentController = {
       if (department) {
         agentList = agentList.filter(agent => agent.department === department);
       }
-
-      console.log(`📋 Retrieved ${agentList.length} agents`);
-
-      // 3. ส่ง response ด้วย sendSuccess
+      // 3. Send response
       return sendSuccess(res, 'Agents retrieved successfully',
         agentList.map(agent => agent.toJSON())
       );
@@ -66,11 +61,12 @@ const agentController = {
     }
   },
 
-
   // 🔄 TODO #2: นักศึกษาทำเอง (15 นาที)  
   // POST /api/agents
   createAgent: (req, res) => {
     try {
+      const agentData = req.body;
+
       // TODO: ตรวจสอบว่า agentCode ซ้ำไหม
       // Hint: ใช้ Array.from(agents.values()).find()
 
@@ -82,10 +78,7 @@ const agentController = {
 
       // TODO: ส่ง response พร้อม status 201
 
-      const agentData = req.body;
-      console.log('📝 Creating new agent:', agentData);
-
-      // 1. ตรวจสอบว่า agentCode ซ้ำไหม
+      // 1. Check duplicate
       const existingAgent = Array.from(agents.values())
         .find(agent => agent.agentCode === agentData.agentCode);
 
@@ -93,15 +86,11 @@ const agentController = {
         return sendError(res, `Agent code ${agentData.agentCode} already exists`, 409);
       }
 
-      // 2. สร้าง Agent ใหม่
+      // 2. Create new agent
       const newAgent = new Agent(agentData);
-
-      // 3. เก็บลง Map
       agents.set(newAgent.id, newAgent);
 
-      console.log(`✅ Created agent: ${newAgent.agentCode} - ${newAgent.name}`);
-
-      // 4. ส่ง response พร้อม status 201
+      // 3. Success response
       return sendSuccess(res, API_MESSAGES.AGENT_CREATED, newAgent.toJSON(), 201);
 
       //return sendError(res, 'TODO: Implement createAgent function', 501);
@@ -110,7 +99,6 @@ const agentController = {
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
     }
   },
-
 
   // ✅ ให้ code สำเร็จเป็นตัวอย่าง
   // PUT /api/agents/:id
@@ -141,10 +129,14 @@ const agentController = {
     }
   },
 
-   // 🔄 TODO #3: นักศึกษาทำเอง (15 นาที - ยากสุด)
+  // 🔄 TODO #3: นักศึกษาทำเอง (15 นาที - ยากสุด)
   // PATCH /api/agents/:id/status  
   updateAgentStatus: (req, res) => {
     try {
+      const { id } = req.params;
+      const { status, reason } = req.body;
+      const agent = agents.get(id);
+      
       // TODO: หา agent จาก id
       // TODO: ตรวจสอบว่า agent มีอยู่ไหม
       // TODO: validate status ด้วย AGENT_STATUS  
@@ -152,50 +144,26 @@ const agentController = {
       // TODO: เรียก agent.updateStatus(status, reason)
       // TODO: ส่ง response กลับ
 
-      const { id } = req.params;
-      const { status, reason } = req.body;
-      console.log(`🔄 Updating agent status: ${id} -> ${status}`);
 
-      // 1. หา agent จาก id
-      const agent = agents.get(id);
-
-      console.log("id: " + id);
-      console.log("status: " + status);
-      console.log("reason: " + reason);
-
-      // 2. ตรวจสอบว่า agent มีอยู่ไหม
+      // Validation checks
       if (!agent) {
         return sendError(res, API_MESSAGES.AGENT_NOT_FOUND, 404);
       }
 
-      // 3. validate status ด้วย AGENT_STATUS  
       if (!Object.values(AGENT_STATUS).includes(status)) {
-        return sendError(res,
-          `Invalid status. Valid statuses: ${Object.values(AGENT_STATUS).join(', ')}`,
-          400
-        );
+        return sendError(res, `Invalid status. Valid: ${Object.values(AGENT_STATUS).join(', ')}`, 400);
       }
 
-      // 4. ตรวจสอบ valid transition ด้วย VALID_STATUS_TRANSITIONS
+      // Transition validation
       const currentStatus = agent.status;
       const validTransitions = VALID_STATUS_TRANSITIONS[currentStatus];
-      console.log("status: " + currentStatus);
-      console.log("reason: " + validTransitions);
 
       if (!validTransitions.includes(status)) {
         return sendError(res,
-          `Cannot change from ${currentStatus} to ${status}. Valid transitions: ${validTransitions.join(', ')}`,
+          `Cannot change from ${currentStatus} to ${status}. Valid: ${validTransitions.join(', ')}`,
           400
         );
       }
-
-      // 5. เรียก agent.updateStatus(status, reason)
-      agent.updateStatus(status, reason);
-
-      console.log(`✅ Agent ${agent.agentCode} status updated to ${status}`);
-
-      // 6. ส่ง response กลับ
-      return sendSuccess(res, API_MESSAGES.STATUS_UPDATED, agent.toJSON());
 
       //return sendError(res, 'TODO: Implement updateAgentStatus function', 501);
     } catch (error) {
@@ -203,7 +171,6 @@ const agentController = {
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
     }
   },
-
 
   // ✅ ให้ code สำเร็จ
   // DELETE /api/agents/:id
@@ -255,84 +222,7 @@ const agentController = {
       console.error('Error in getStatusSummary:', error);
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
     }
-  },
-
-
-  // Agent Search API
-  searchAgents: (req, res) => {
-    console.log('🔍 [searchAgents] called with query:', req.query);
-
-    const { q = '', fields = '' } = req.query;
-    const keyword = q.toLowerCase();
-    const selectedFields = fields.split(',').map(f => f.trim()).filter(f => f);
-
-    const results = Array.from(agents.values()).filter(agent => {
-      return [agent.name, agent.email, agent.agentCode].some(field =>
-        field.toLowerCase().includes(keyword)
-      );
-    });
-
-    const response = results.map(agent => {
-      const data = agent.toJSON();
-      if (selectedFields.length === 0) return data;
-
-      // คืนเฉพาะ field ที่เลือก
-      return Object.fromEntries(
-        selectedFields.map(f => [f, data[f]]).filter(([key, val]) => val !== undefined)
-      );
-    });
-
-    console.log(`✅ [searchAgents] found ${response.length} result(s)`);
-    res.json({ success: true, total: response.length, results: response });
-  },
-
-
-
-  //Department Statistics
-  getDepartmentStatistics: (req, res) => {
-    try {
-      const summary = {};
-      const agentList = Array.from(agents.values());
-
-      agentList.forEach(agent => {
-        const dept = agent.department || 'Unknown';
-        const status = agent.status || 'Unknown';
-
-        if (!summary[dept]) {
-          summary[dept] = { total: 0 };
-        }
-
-        summary[dept].total += 1;
-        summary[dept][status] = (summary[dept][status] || 0) + 1;
-      });
-
-      return sendSuccess(res, 'Department statistics retrieved successfully', {
-        summary,
-        lastUpdated: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Error in getDepartmentStatistics:', error);
-      return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
-    }
-  },
-
-  //Status History
-  getStatusHistory: (req, res) => {
-    try {
-      const { id } = req.params;
-      const agent = agents.get(id);
-
-      if (!agent) {
-        return sendError(res, API_MESSAGES.AGENT_NOT_FOUND, 404);
-      }
-
-      return sendSuccess(res, 'Status history retrieved successfully', agent.getStatusHistory());
-    } catch (error) {
-      console.error('Error in getStatusHistory:', error);
-      return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
-    }
   }
-
 };
 
 module.exports = agentController;
