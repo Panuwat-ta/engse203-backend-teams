@@ -110,24 +110,13 @@ function initializeSampleData() {
       department: 'Technical', 
       skills: ['English', 'Technical', 'Supervisor'],
       status: 'Available'
-    },
-        {
-      agentCode: 'B001',
-      name: 'panuwat',
-      email: 'panuwat@gmail.com',
-      department: 'Technical', 
-      skills: ['English', 'Technical', 'Supervisor'],
-      status: 'Available'
     }
-
   ];
 
   // เพิ่ม agent ทั้งหมดเข้า Map
   sampleAgents.forEach(data => {
     const agent = new Agent(data);
     agents.set(agent.id, agent);
-    console.log(`🆔 Agent ${agent.agentCode} has ID: ${agent.id}`);
-    console.log('📋 All agent IDs in system:', Array.from(agents.keys()));
   });
 
   console.log(`✅ Initialized ${agents.size} sample agents`);
