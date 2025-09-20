@@ -61,8 +61,8 @@ const agentMongoSchema = new mongoose.Schema({
     default: Date.now 
   },
   statusHistory: [statusHistorySchema],
-  
-    // Performance metrics
+
+  // Performance metrics
   performance: performanceSchema,
   
   // WebSocket session tracking

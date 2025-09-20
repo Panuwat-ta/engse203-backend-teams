@@ -32,6 +32,10 @@ const io = socketServer.initialize(server, {
   }
 });
 
+
+// เริ่มส่ง dashboard update ทุก 5 วินาที
+socketServer.startDashboardUpdates();
+
 // Security middleware
 app.use(helmet());
 

@@ -11,6 +11,9 @@ router.get('/', agentController.getAllAgents);
 // GET /api/agents/status/summary - ต้องมาก่อน /:id route
 router.get('/status/summary', agentController.getStatusSummary);
 
+// GET /api/agents/:id/performance
+router.get('/:id/performance', agentController.getAgentPerformance);
+
 // GET /api/agents/:id - Get specific agent
 router.get('/:id', agentController.getAgentById);
 
@@ -26,7 +29,6 @@ router.patch('/:id/status', validateStatusUpdate, agentController.updateAgentSta
 // DELETE /api/agents/:id - Delete agent
 router.delete('/:id', agentController.deleteAgent);
 
-// GET /api/agents/:id/performance
-router.get('/:id/performance', agentController.getAgentPerformance);
+
 
 module.exports = router;

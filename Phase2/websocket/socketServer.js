@@ -153,36 +153,35 @@ class SocketServer {
     }
   }
 
+  // Add to socketServer.js
+  startDashboardUpdates() {
+    setInterval(async () => {
+      await this.sendDashboardUpdate();
+    }, 5000); // Update every 5 seconds
+  }
+
+  // Enhanced dashboard data
   async sendDashboardUpdate() {
-    try {
-      // Get current statistics
-      const totalAgents = await AgentMongo.countDocuments({ isActive: true });
-      const onlineAgents = await AgentMongo.countDocuments({
-        isActive: true,
-        isOnline: true
-      });
+    const stats = await AgentMongo.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalAgents: { $sum: 1 },
+          onlineAgents: {
+            $sum: { $cond: [{ $eq: ['$isOnline', true] }, 1, 0] }
+          },
+          avgResponseTime: { $avg: '$avgResponseTime' },
+          statusBreakdown: {
+            $push: {
+              status: '$status',
+              count: 1
+            }
+          }
+        }
+      }
+    ]);
 
-      const statusCounts = await AgentMongo.aggregate([
-        { $match: { isActive: true, isOnline: true } },
-        { $group: { _id: '$status', count: { $sum: 1 } } }
-      ]);
-
-      const stats = {
-        totalAgents,
-        onlineAgents,
-        offlineAgents: totalAgents - onlineAgents,
-        statusBreakdown: statusCounts.reduce((acc, item) => {
-          acc[item._id] = item.count;
-          return acc;
-        }, {}),
-        timestamp: new Date()
-      };
-
-      // Send to dashboard room
-      this.io.to('dashboard').emit('dashboardUpdate', stats);
-    } catch (error) {
-      console.error('❌ Error sending dashboard update:', error);
-    }
+    this.io.to('dashboard').emit('dashboardUpdate', stats[0]);
   }
 
   // Method to send message to specific agent

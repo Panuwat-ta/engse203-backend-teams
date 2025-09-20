@@ -136,7 +136,7 @@ const agentController = {
       const { id } = req.params;
       const { status, reason } = req.body;
       const agent = agents.get(id);
-
+      
       // TODO: หา agent จาก id
       // TODO: ตรวจสอบว่า agent มีอยู่ไหม
       // TODO: validate status ด้วย AGENT_STATUS  
@@ -164,7 +164,7 @@ const agentController = {
           400
         );
       }
-      
+
       //return sendError(res, 'TODO: Implement updateAgentStatus function', 501);
     } catch (error) {
       console.error('Error in updateAgentStatus:', error);
@@ -222,63 +222,7 @@ const agentController = {
       console.error('Error in getStatusSummary:', error);
       return sendError(res, API_MESSAGES.INTERNAL_ERROR, 500);
     }
-  },
-
-  // controllers/agentController.js
-  getAgentPerformance: async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { startDate, endDate } = req.query;
-
-      const agent = await AgentMongo.findById(id);
-      if (!agent) {
-        return sendError(res, 'Agent not found', 404);
-      }
-
-      // Date range filter
-      const dateFilter = {};
-      if (startDate) dateFilter.$gte = new Date(startDate);
-      if (endDate) dateFilter.$lte = new Date(endDate);
-
-      // Example: calculate from statusHistory
-      const history = agent.statusHistory.filter(h =>
-        (!startDate || new Date(h.timestamp) >= new Date(startDate)) &&
-        (!endDate || new Date(h.timestamp) <= new Date(endDate))
-      );
-
-      // --- Break Time Calculation ---
-      let totalBreakTime = 0;
-      let lastBreakStart = null;
-      history.forEach((h, idx) => {
-        if (h.status === 'Break') {
-          lastBreakStart = new Date(h.timestamp);
-        } else if (lastBreakStart) {
-          const breakEnd = new Date(h.timestamp);
-          totalBreakTime += (breakEnd - lastBreakStart) / 1000; // seconds
-          lastBreakStart = null;
-        }
-      });
-
-      // --- Calls & Duration (mock for now) ---
-      // Ideally, fetch from CallLog collection
-      const totalCalls = agent.performance.totalCalls || 0;
-      const avgCallDuration = agent.performance.avgCallDuration || 0;
-      const satisfactionScore = agent.performance.satisfactionScore || 0;
-
-      const metrics = {
-        totalCalls,
-        avgCallDuration,
-        satisfactionScore,
-        totalBreakTime
-      };
-
-      return sendSuccess(res, 'Performance data', metrics);
-    } catch (error) {
-      console.error('getAgentPerformance error:', error);
-      return sendError(res, 'Failed to get performance data', 500);
-    }
   }
-
 };
 
 module.exports = agentController;
