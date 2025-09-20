@@ -8,6 +8,13 @@ const statusHistorySchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now }
 });
 
+const performanceSchema = new mongoose.Schema({
+  totalCalls: { type: Number, default: 0 },
+  avgCallDuration: { type: Number, default: 0 },
+  satisfactionScore: { type: Number, default: 0 },
+  totalBreakTime: { type: Number, default: 0 }
+}, { _id: false });
+
 const agentMongoSchema = new mongoose.Schema({
   agentCode: { 
     type: String, 
@@ -54,6 +61,9 @@ const agentMongoSchema = new mongoose.Schema({
     default: Date.now 
   },
   statusHistory: [statusHistorySchema],
+  
+    // Performance metrics
+  performance: performanceSchema,
   
   // WebSocket session tracking
   socketId: { 

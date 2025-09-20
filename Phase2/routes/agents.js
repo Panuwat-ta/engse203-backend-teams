@@ -26,4 +26,7 @@ router.patch('/:id/status', validateStatusUpdate, agentController.updateAgentSta
 // DELETE /api/agents/:id - Delete agent
 router.delete('/:id', agentController.deleteAgent);
 
+// GET /api/agents/:id/performance
+router.get('/:id/performance', agentController.getAgentPerformance);
+
 module.exports = router;
