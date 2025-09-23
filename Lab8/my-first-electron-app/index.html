@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="th">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My First Electron App</title>
+  <style>
+    /* CSS สำหรับตกแต่ง */
+    body {
+      font-family: 'Segoe UI', 'Noto Color Emoji', Arial, sans-serif;
+      /* Noto Color Emoji สำหรับแสดง Emoji wsl */
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #284be4 0%, #2734e5 100%);
+      color: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 40px;
+      border-radius: 20px;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      max-width: 500px;
+    }
+
+    .title {
+      font-size: 2.5em;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .subtitle {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+      opacity: 0.9;
+    }
+
+    .button {
+      background: rgba(255, 255, 255, 0.2);
+      border: 2px solid white;
+      color: white;
+      padding: 12px 30px;
+      font-size: 16px;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin: 10px;
+    }
+
+    .button:hover {
+      background: white;
+      color: #667eea;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .info {
+      margin-top: 30px;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    .process-info {
+      text-align: left;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1 class="title">🚀 Hello Electron!</h1>
+    <p class="subtitle">นี่คือ Desktop App แรกของเรา</p>
+
+    <button class="button" onclick="showAlert()">🎉 Click Me!</button>
+    <button class="button" onclick="showTime()">⏰ Show Time</button>
+    <button class="button" onclick="changeColor()">🎨 Change Color</button>
+    <button class="button" onclick="changebackground()">📷 change background</button>
+    <button class="button" onclick="doCalculate()">➕ Calculator</button>
+    <button class="button" onclick="showDate()">📅 Show Date</button>
+
+    <div class="info">
+      <strong>🖥️ System Information:</strong>
+      <div class="process-info" id="systemInfo">Loading...</div>
+    </div>
+    <!-- Calculator Section -->
+    <div class="info">
+      <strong>➕ Calculator:</strong>
+      <div class="process-info">
+        <input type="number" id="num1" placeholder="ตัวเลขที่ 1">
+        <select id="operator">
+          <option value="+">+</option>
+          <option value="-">-</option>
+          <option value="*">*</option>
+          <option value="/">/</option>
+        </select>
+        <input type="number" id="num2" placeholder="ตัวเลขที่ 2">
+        <button onclick="doCalculate()">คำนวณ</button>
+        <div id="calcOutput"></div>
+      </div>
+    </div>
+
+
+    <div class="info">
+      <strong>📊 Process Information:</strong>
+      <div class="process-info">
+        <div>🎨 <strong>Renderer Process:</strong> แสดง UI นี้</div>
+        <div>🖥️ <strong>Main Process:</strong> ควบคุม window และ app</div>
+        <div>🌐 <strong>Technology:</strong> HTML + CSS + JavaScript</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    console.log('🎨 Renderer Process เริ่มทำงาน');
+
+    // ฟังก์ชันแสดง alert
+    function showAlert() {
+      alert('🎉 สวัสดี! นี่คือ Desktop App ที่สร้างด้วย Electron\n\n' +
+        '✨ เราใช้ HTML, CSS, JavaScript เหมือน web\n' +
+        '🖥️ แต่รันเป็น desktop application!');
+    }
+
+    // ฟังก์ชันแสดงเวลา
+    function showTime() {
+      const now = new Date();
+      const timeString = now.toLocaleString('th-TH');
+      alert(`⏰ เวลาปัจจุบัน:\n${timeString}`);
+    }
+
+    // ฟังก์ชันแสดงวันที่
+    function showDate() {
+      const today = new Date();
+      alert(`📅 วันนี้คือ: ${today.toLocaleDateString('th-TH')}`);
+    }
+
+    // ฟังก์ชันคำนวณง่ายๆ
+    function doCalculate() {
+      const a = parseFloat(document.getElementById('num1').value);
+      const b = parseFloat(document.getElementById('num2').value);
+      const op = document.getElementById('operator').value;
+      const output = document.getElementById('calcOutput');
+
+      if (isNaN(a) || isNaN(b)) {
+        output.innerHTML = "⚠️ กรุณากรอกตัวเลขให้ถูกต้อง";
+        return;
+      }
+
+      let result;
+      switch (op) {
+        case '+': result = a + b; break;
+        case '-': result = a - b; break;
+        case '*': result = a * b; break;
+        case '/':
+          if (b === 0) {
+            output.innerHTML = "⚠️ ไม่สามารถหารด้วย 0 ได้";
+            return;
+          }
+          result = a / b;
+          break;
+        default: result = "❌ operator ไม่ถูกต้อง";
+      }
+
+      output.innerHTML = `💡 ผลลัพธ์: ${a} ${op} ${b} = ${result}`;
+    }
+
+
+    // ฟังก์ชันเปลี่ยนสี background
+    const colors = [
+      'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+      'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+      'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+      'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+      'linear-gradient(135deg, #fa709a 0%, #fee140 100%)'
+    ];
+
+    const bgImages = [
+      "url('https://i.pinimg.com/736x/1a/54/45/1a544586f6e70598714560a7fc93915b.jpg')",
+      "url('https://i.pinimg.com/1200x/12/c1/44/12c1442dee8df7b8972e2e90bb0e6f11.jpg')",
+      "url('https://i.pinimg.com/736x/7f/d1/4d/7fd14d1822bc3e200a15d464286a1686.jpg')",
+      "url('https://i.pinimg.com/736x/88/41/e3/8841e37e3f05009c506727cdd20ec3f7.jpg')",
+      "url('https://i.pinimg.com/736x/e2/a3/fb/e2a3fb4e048e1f09512aef39d35d50bd.jpg')"
+    ];
+
+    let currentColorIndex = 0;
+    let currentBgIndex = 0;
+
+    function changeColor() {
+      currentColorIndex = (currentColorIndex + 1) % colors.length;
+      document.body.style.background = colors[currentColorIndex];
+      console.log('🎨 เปลี่ยนสีพื้นหลัง:', currentColorIndex);
+    }
+    // ฟังก์ชันเปลี่ยนภาพ background
+    function changebackground() {
+      currentBgIndex = (currentBgIndex + 1) % bgImages.length;
+      document.body.style.background = `${bgImages[currentBgIndex]} no-repeat center center fixed`;
+      document.body.style.backgroundSize = "cover";
+      console.log('🖼️ เปลี่ยนพื้นหลังเป็นภาพ:', currentBgIndex);
+    }
+    // ฟังก์ชันเล่นเสียง 
+    function playSound() {
+      // ตอนนี้ยังไม่เล่นเสียง
+    }
+
+
+    // แสดงข้อมูล system
+    function displaySystemInfo() {
+      const info = document.getElementById('systemInfo');
+      info.innerHTML = `
+        <div>🌐 Platform: ${navigator.platform}</div>
+        <div>🔧 User Agent: ${navigator.userAgent.split(' ')[0]}</div>
+        <div>📱 Screen: ${screen.width} x ${screen.height}</div>
+        <div>🌍 Language: ${navigator.language}</div>
+      `;
+    }
+
+    // เรียกใช้เมื่อ page โหลดเสร็จ
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('📄 HTML โหลดเสร็จแล้ว');
+      displaySystemInfo();
+    });
+
+    // แสดงข้อความเมื่อ page โหลดเสร็จสมบูรณ์
+    window.addEventListener('load', () => {
+      console.log('✅ ทุกอย่างโหลดเสร็จแล้ว - พร้อมใช้งาน!');
+    });
+
+  </script>
+</body>
+
+</html>
