@@ -9,7 +9,10 @@ export const connectSocket = (agentCode) => {
   console.log('Connecting to WebSocket...', SOCKET_URL);
 
   socket = io(SOCKET_URL, {
-    query: { agentCode: agentCode.toUpperCase(), type: 'agent' },
+    query: {
+      agentCode: agentCode.toUpperCase(),
+      type: 'agent'
+    },
     timeout: 20000,
     reconnection: true,
     reconnectionAttempts: 5,
@@ -22,27 +25,41 @@ export const connectSocket = (agentCode) => {
     socket.emit('agent_connect', { agentCode: agentCode.toUpperCase() });
   });
 
-  socket.on('disconnect', (reason) => console.log('WebSocket disconnected:', reason));
-  socket.on('connect_error', (error) => console.error('WebSocket connection error:', error));
+  socket.on('disconnect', (reason) => {
+    console.log('WebSocket disconnected:', reason);
+  });
 
-  // 🔹 เพิ่ม listener สำหรับ event แจ้งเตือน
-  socket.on('newMessage', (data) => {
-    console.log('📡 Received newMessage event:', data);
+  socket.on('connect_error', (error) => {
+    console.error('WebSocket connection error:', error);
+  });
 
-    // เรียก Electron / Web notification
-    const title = `Message from ${data.fromCode}`;
-    const body = `Type: ${data.type} → To: ${data.toCode}`;
-    if (window.electronAPI?.showNotification) {
-      window.electronAPI.showNotification(title, body);
-    } else if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification(title, { body });
-    }
+  socket.on('reconnect', (attemptNumber) => {
+    console.log('WebSocket reconnected after', attemptNumber, 'attempts');
+  });
+
+  socket.on('reconnect_error', (error) => {
+    console.error('WebSocket reconnection error:', error);
+  });
+
+  socket.on('reconnect_failed', () => {
+    console.error('WebSocket reconnection failed after all attempts');
+  });
+
+  socket.on('connection_error', (error) => {
+    console.error('Connection error from server:', error);
+  });
+
+  socket.on('status_error', (error) => {
+    console.error('Status update error from server:', error);
+  });
+
+  socket.on('message_error', (error) => {
+    console.error('Message error from server:', error);
   });
 
   window.socket = socket;
   return socket;
 };
-
 
 export const disconnectSocket = () => {
   if (socket) {

@@ -1,17 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { formatTime, getTimeAgo } from '../utils/dateUtils';
 import { markMessageAsRead } from '../services/api';
+import '../styles/MessagePanel.css';
 
 function MessagePanel({ messages, agentCode, loading = false }) {
   const messagesEndRef = useRef(null);
   const messageListRef = useRef(null);
   const [markingRead, setMarkingRead] = useState(new Set());
   const [autoScroll, setAutoScroll] = useState(true);
-  
-  // ✅ เพิ่ม local state สำหรับจัดการ read status
   const [localMessages, setLocalMessages] = useState([]);
+  
+  // ✅ เพิ่ม state สำหรับ filtering และ pagination
+  const [filter, setFilter] = useState('all'); // 'all', 'unread', 'broadcast', 'direct'
+  const [showAll, setShowAll] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(5);
 
-  // ✅ Sync กับ messages prop
+  // Sync กับ messages prop
   useEffect(() => {
     setLocalMessages(messages);
   }, [messages]);
@@ -31,17 +35,17 @@ function MessagePanel({ messages, agentCode, loading = false }) {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [localMessages]);
+    if (!showAll) {
+      scrollToBottom();
+    }
+  }, [localMessages, showAll]);
 
-  // ✅ แก้ไข handleMarkAsRead
   const handleMarkAsRead = async (messageId) => {
     if (markingRead.has(messageId)) return;
 
-    // เพิ่ม messageId เข้า set
     setMarkingRead(prev => new Set(prev).add(messageId));
 
-    // ✅ อัปเดต UI ทันที (Optimistic Update)
+    // Optimistic update
     setLocalMessages(prev => prev.map(msg => 
       (msg._id === messageId || msg.messageId === messageId)
         ? { ...msg, isRead: true, readAt: new Date() }
@@ -49,22 +53,17 @@ function MessagePanel({ messages, agentCode, loading = false }) {
     ));
 
     try {
-      // เรียก API
       await markMessageAsRead(messageId);
       console.log('✅ Message marked as read:', messageId);
-      
     } catch (error) {
       console.error('❌ Failed to mark message as read:', error);
-      
-      // ✅ ถ้า API fail, rollback UI
+      // Rollback
       setLocalMessages(prev => prev.map(msg => 
         (msg._id === messageId || msg.messageId === messageId)
           ? { ...msg, isRead: false, readAt: null }
           : msg
       ));
-      
     } finally {
-      // ลบออกจาก set
       setMarkingRead(prev => {
         const newSet = new Set(prev);
         newSet.delete(messageId);
@@ -82,8 +81,21 @@ function MessagePanel({ messages, agentCode, loading = false }) {
     return colors[priority] || colors.normal;
   };
 
-  // ✅ นับจาก localMessages แทน messages prop
+  // ✅ Filter messages
+  const filteredMessages = localMessages.filter(msg => {
+    if (filter === 'unread') return !msg.isRead;
+    if (filter === 'broadcast') return msg.type === 'broadcast';
+    if (filter === 'direct') return msg.type === 'direct';
+    return true; // 'all'
+  });
+
+  // ✅ Limit messages
+  const displayedMessages = showAll 
+    ? filteredMessages 
+    : filteredMessages.slice(-displayLimit);
+
   const unreadCount = localMessages.filter(m => !m.isRead).length;
+  const hiddenCount = filteredMessages.length - displayedMessages.length;
 
   return (
     <div className="message-panel">
@@ -95,7 +107,7 @@ function MessagePanel({ messages, agentCode, loading = false }) {
           )}
         </h3>
         
-        {localMessages.length > 0 && (
+        {localMessages.length > 0 && !showAll && (
           <button 
             onClick={() => scrollToBottom(true)}
             className="scroll-btn"
@@ -105,6 +117,49 @@ function MessagePanel({ messages, agentCode, loading = false }) {
           </button>
         )}
       </div>
+      
+      {/* ✅ Filter Tabs */}
+      <div className="message-filters">
+        <button 
+          className={`filter-btn ${filter === 'all' ? 'active' : ''}`}
+          onClick={() => setFilter('all')}
+        >
+          All ({localMessages.length})
+        </button>
+        <button 
+          className={`filter-btn ${filter === 'unread' ? 'active' : ''}`}
+          onClick={() => setFilter('unread')}
+        >
+          Unread ({unreadCount})
+        </button>
+        <button 
+          className={`filter-btn ${filter === 'broadcast' ? 'active' : ''}`}
+          onClick={() => setFilter('broadcast')}
+        >
+          Broadcast ({localMessages.filter(m => m.type === 'broadcast').length})
+        </button>
+        <button 
+          className={`filter-btn ${filter === 'direct' ? 'active' : ''}`}
+          onClick={() => setFilter('direct')}
+        >
+          Direct ({localMessages.filter(m => m.type === 'direct').length})
+        </button>
+      </div>
+
+      {/* ✅ Show All Toggle */}
+      {filteredMessages.length > displayLimit && (
+        <div className="show-all-toggle">
+          <button 
+            className="toggle-btn"
+            onClick={() => setShowAll(!showAll)}
+          >
+            {showAll 
+              ? `Show Latest ${displayLimit}` 
+              : `Show All (${hiddenCount} more)`
+            }
+          </button>
+        </div>
+      )}
       
       <div 
         className="message-list"
@@ -116,15 +171,36 @@ function MessagePanel({ messages, agentCode, loading = false }) {
             <div className="loading-spinner"></div>
             <p>Loading messages...</p>
           </div>
-        ) : localMessages.length === 0 ? (
+        ) : displayedMessages.length === 0 ? (
           <div className="no-messages">
             <div className="no-messages-icon">🔭</div>
-            <p>No messages yet</p>
-            <small>Messages from supervisors will appear here</small>
+            <p>
+              {filteredMessages.length === 0 
+                ? 'No messages yet'
+                : `No ${filter} messages`
+              }
+            </p>
+            <small>
+              {filter !== 'all' && (
+                <button 
+                  className="clear-filter-btn"
+                  onClick={() => setFilter('all')}
+                >
+                  Clear filter
+                </button>
+              )}
+            </small>
           </div>
         ) : (
           <>
-            {localMessages.map((message, index) => (
+            {/* ✅ Hidden messages indicator */}
+            {!showAll && hiddenCount > 0 && (
+              <div className="hidden-indicator">
+                {hiddenCount} older messages hidden
+              </div>
+            )}
+
+            {displayedMessages.map((message, index) => (
               <div 
                 key={message._id || message.messageId || index}
                 className={`message-item ${message.type} ${message.isRead ? 'read' : 'unread'}`}
@@ -180,6 +256,25 @@ function MessagePanel({ messages, agentCode, loading = false }) {
           </>
         )}
       </div>
+
+      {/* ✅ Quick actions */}
+      {unreadCount > 0 && (
+        <div className="message-actions">
+          <button 
+            className="action-btn"
+            onClick={() => {
+              // Mark all as read
+              displayedMessages.forEach(msg => {
+                if (!msg.isRead) {
+                  handleMarkAsRead(msg._id || msg.messageId);
+                }
+              });
+            }}
+          >
+            Mark all as read
+          </button>
+        </div>
+      )}
     </div>
   );
 }

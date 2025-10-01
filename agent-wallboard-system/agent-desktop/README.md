@@ -1,8 +1,23 @@
 # agent-desktop
 
-<img width="1919" height="1079" alt="image" src="https://github.com/user-attachments/assets/728c3959-d5d8-42d4-a450-62dda1077e61" />
+## ✅ Final Checklist
+
+- [✅] `package.json` มี `scripts` ครบ
+- [✅] สร้างไฟล์ `.env` แล้ว
+- [✅] ไฟล์ Icon สร้างแล้ว
+- [✅] ทุกไฟล์ Component มี `export default`
+- [✅] ทุก Service มี `export functions`
+- [✅] Backend รันอยู่บน port `3001`
+- [✅] MongoDB service กำลังรัน
+- [✅] SQLite database มีข้อมูล
+
+## test desktop
+![alt text](/img/test.png)
+
+## Test Messages
+![alt text](/img/test-messages.png)
+
+## Mongodb
+![alt text](/img/MongoDB.png)
 
 
-# Test Messages
-
-<img width="1919" height="1024" alt="image" src="https://github.com/user-attachments/assets/6f8dc8c2-991c-429c-be14-234b4dfbb632" />
