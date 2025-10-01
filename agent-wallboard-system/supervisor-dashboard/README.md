@@ -11,10 +11,12 @@ Features:
 - [✅] Error handling
 
 ## test supervisor-dashboard
-![alt text](/img/test.png)
+<img width="1919" height="1024" alt="image" src="https://github.com/user-attachments/assets/ae84b225-7559-4dd9-b834-48734e82f606" />
+
 
 ## ทดสอบการส่งข้อความ
-![alt text](/img/test-message.png)
+<img width="1919" height="1021" alt="image" src="https://github.com/user-attachments/assets/b2b9f1d8-fa34-4187-8cd8-ccd855a3832e" />
+
 
 ## ทดสอบ real-time updates
-![alt text](/img/real-time-updates.png)
+<img width="1919" height="1020" alt="image" src="https://github.com/user-attachments/assets/a175c366-1d43-4a57-aef6-d6dfc30c7e2b" />
