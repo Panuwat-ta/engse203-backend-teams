@@ -55,7 +55,7 @@ ipcMain.handle('get-app-version', () => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
+    width: 800,
     height: 700,
     minWidth: 350,
     minHeight: 600,
