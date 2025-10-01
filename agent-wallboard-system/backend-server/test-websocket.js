@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const io = require('socket.io-client');
 
 const SOCKET_URL = 'http://localhost:3001';
