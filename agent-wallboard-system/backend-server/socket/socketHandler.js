@@ -114,24 +114,46 @@ function socketHandler(io) {
         console.log('📤 Sending current online agents...');
 
         const onlineAgents = [];
+
         activeConnections.forEach((socketId, agentCode) => {
           const agentSocket = io.sockets.sockets.get(socketId);
           if (agentSocket && agentSocket.connected) {
-            onlineAgents.push({
-              agentCode: agentCode,
-              timestamp: new Date()
-            });
+            // ✅ ดึง status ล่าสุดจาก MongoDB
+            Status.findOne({ agentCode: agentCode })
+              .sort({ timestamp: -1 })
+              .limit(1)
+              .then(latestStatus => {
+                onlineAgents.push({
+                  agentCode: agentCode,
+                  status: latestStatus?.status || 'Available',
+                  timestamp: latestStatus?.timestamp || new Date()
+                });
+
+                // ส่งข้อมูลหลังรวบรวมครบ
+                if (onlineAgents.length === activeConnections.size) {
+                  console.log(`📤 Sending ${onlineAgents.length} online agents with status`);
+                  socket.emit('connection_success', {
+                    supervisorCode: cleanCode,
+                    status: 'connected',
+                    timestamp: new Date(),
+                    onlineAgents: onlineAgents
+                  });
+                }
+              });
           }
         });
 
         console.log(`   Found ${onlineAgents.length} online agents:`, onlineAgents.map(a => a.agentCode));
 
-        socket.emit('connection_success', {
-          supervisorCode: cleanCode,
-          status: 'connected',
-          timestamp: new Date(),
-          onlineAgents: onlineAgents // ส่งรายชื่อ agents ที่ online
-        });
+        // ถ้าไม่มี agent online ส่งเลย
+        if (activeConnections.size === 0) {
+          socket.emit('connection_success', {
+            supervisorCode: cleanCode,
+            status: 'connected',
+            timestamp: new Date(),
+            onlineAgents: []
+          });
+        }
 
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 

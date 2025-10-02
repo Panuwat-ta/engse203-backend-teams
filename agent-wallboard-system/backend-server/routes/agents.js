@@ -7,18 +7,48 @@ const authMiddleware = require('../middleware/auth');
 /**
  * GET /api/agents/team/:teamId
  * Get all agents in a team (for supervisors)
+ * Get all agents in a team WITH current status
  */
+
 router.get('/team/:teamId', authMiddleware, async (req, res) => {
   try {
     const { teamId } = req.params;
     
+    // 1. ดึงข้อมูล agents จาก SQLite
     const agents = await Agent.findByTeam(parseInt(teamId));
+    
+    // 2. ✅ ดึง current status ล่าสุดของแต่ละ agent จาก MongoDB
+    const agentsWithStatus = await Promise.all(
+      agents.map(async (agent) => {
+        // หา status ล่าสุด
+        const latestStatus = await Status.findOne({
+          agentCode: agent.agent_code
+        })
+        .sort({ timestamp: -1 })
+        .limit(1)
+        .lean();
+        
+        return {
+          agent_code: agent.agent_code,
+          agent_name: agent.agent_name,
+          role: agent.role,
+          email: agent.email,
+          phone: agent.phone,
+          team_id: parseInt(teamId),
+          // ✅ เพิ่ม current status
+          currentStatus: latestStatus?.status || 'Offline',
+          lastUpdate: latestStatus?.timestamp || new Date()
+        };
+      })
+    );
+    
+    console.log('Team agents with status:', agentsWithStatus);
     
     res.json({
       success: true,
       teamId: parseInt(teamId),
-      agents: agents,
-      count: agents.length
+      agents: agentsWithStatus,
+      count: agentsWithStatus.length
     });
     
   } catch (error) {
