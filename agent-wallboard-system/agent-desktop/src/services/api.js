@@ -1,18 +1,31 @@
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
-let authToken = null;
+import { getToken, saveAuth, clearAuth } from './auth';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+
+/**
+ * Get auth token from auth service
+ */
+export const getAuthToken = () => getToken();
+
+/**
+ * Set auth token (for backward compatibility)
+ */
 export const setAuthToken = (token) => {
-  authToken = token;
-  console.log('Auth token set');
+  // This is now handled by auth.js
+  console.log('Auth token set via api.js');
 };
 
+/**
+ * Clear auth token (for backward compatibility)
+ */
 export const clearAuthToken = () => {
-  authToken = null;
+  clearAuth();
   console.log('Auth token cleared');
 };
 
-export const getAuthToken = () => authToken;
-
+/**
+ * Login agent
+ */
 export const loginAgent = async (agentCode) => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
@@ -27,8 +40,9 @@ export const loginAgent = async (agentCode) => {
       throw new Error(data.error || 'Login failed');
     }
     
-    if (data.data?.token) {
-      setAuthToken(data.data.token);
+    // Save token and agent data to localStorage
+    if (data.data?.token && data.data?.agent) {
+      saveAuth(data.data.token, data.data.agent);
     }
     
     return data;
@@ -38,29 +52,76 @@ export const loginAgent = async (agentCode) => {
   }
 };
 
+/**
+ * Logout agent
+ */
 export const logoutAgent = async () => {
   try {
+    const token = getToken();
+    
+    if (!token) {
+      clearAuth();
+      return { success: true };
+    }
+
     const response = await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
     const data = await response.json();
-    clearAuthToken();
+    clearAuth();
     return data;
   } catch (error) {
     console.error('Logout API Error:', error);
-    clearAuthToken();
+    clearAuth();
     throw error;
   }
 };
 
+/**
+ * Verify existing token
+ */
+export const verifyToken = async () => {
+  try {
+    const token = getToken();
+    
+    if (!token) {
+      throw new Error('No token found');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Token verification failed');
+    }
+    
+    return data;
+  } catch (error) {
+    console.error('Token Verification Error:', error);
+    clearAuth();
+    throw error;
+  }
+};
+
+/**
+ * Get messages for agent
+ */
 export const getMessages = async (agentCode, limit = 50, unreadOnly = false) => {
   try {
-    if (!authToken) {
+    const token = getToken();
+    
+    if (!token) {
       throw new Error('Not authenticated');
     }
 
@@ -68,7 +129,7 @@ export const getMessages = async (agentCode, limit = 50, unreadOnly = false) => 
     const response = await fetch(url, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -85,16 +146,21 @@ export const getMessages = async (agentCode, limit = 50, unreadOnly = false) => 
   }
 };
 
+/**
+ * Mark message as read
+ */
 export const markMessageAsRead = async (messageId) => {
   try {
-    if (!authToken) {
+    const token = getToken();
+    
+    if (!token) {
       throw new Error('Not authenticated');
     }
 
     const response = await fetch(`${API_BASE_URL}/messages/${messageId}/read`, {
       method: 'PUT',
       headers: {
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -111,9 +177,14 @@ export const markMessageAsRead = async (messageId) => {
   }
 };
 
+/**
+ * Update agent status
+ */
 export const updateAgentStatus = async (agentCode, status) => {
   try {
-    if (!authToken) {
+    const token = getToken();
+    
+    if (!token) {
       throw new Error('Not authenticated');
     }
 
@@ -121,7 +192,7 @@ export const updateAgentStatus = async (agentCode, status) => {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify({ status })
     });
@@ -139,16 +210,21 @@ export const updateAgentStatus = async (agentCode, status) => {
   }
 };
 
+/**
+ * Get status history
+ */
 export const getStatusHistory = async (agentCode, limit = 50) => {
   try {
-    if (!authToken) {
+    const token = getToken();
+    
+    if (!token) {
       throw new Error('Not authenticated');
     }
 
     const response = await fetch(`${API_BASE_URL}/agents/${agentCode}/history?limit=${limit}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${authToken}`
+        'Authorization': `Bearer ${token}`
       }
     });
 
@@ -165,6 +241,9 @@ export const getStatusHistory = async (agentCode, limit = 50) => {
   }
 };
 
+/**
+ * Check server health
+ */
 export const checkServerHealth = async () => {
   try {
     const response = await fetch(`${API_BASE_URL.replace('/api', '')}/health`, {

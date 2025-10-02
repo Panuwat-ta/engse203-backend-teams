@@ -4,10 +4,10 @@ import AgentInfo from './components/AgentInfo';
 import StatusPanel from './components/StatusPanel';
 import MessagePanel from './components/MessagePanel';
 import {
-  setAuthToken,
   getMessages,
   updateAgentStatus,
-  logoutAgent
+  logoutAgent,
+  verifyToken
 } from './services/api';
 import {
   connectSocket,
@@ -18,6 +18,7 @@ import {
   showDesktopNotification,
   requestNotificationPermission
 } from './services/notifications';
+import { getStoredAuth, clearAuth } from './services/auth';
 import logger from './utils/logger';
 import './styles/App.css';
 import './styles/components.css';
@@ -30,6 +31,7 @@ function App() {
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [error, setError] = useState(null);
   const [loadingMessages, setLoadingMessages] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Refs to prevent stale closures
   const socketRef = useRef(null);
@@ -39,6 +41,42 @@ function App() {
   useEffect(() => {
     isLoggedInRef.current = isLoggedIn;
   }, [isLoggedIn]);
+
+  // Check for existing authentication on mount
+  useEffect(() => {
+    const checkExistingAuth = async () => {
+      try {
+        logger.log('Checking for existing authentication...');
+        const storedAuth = getStoredAuth();
+        
+        if (!storedAuth) {
+          logger.log('No stored authentication found');
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        logger.log('Found stored auth, verifying token...');
+        
+        // Verify token with server
+        const verificationResult = await verifyToken();
+        
+        if (verificationResult.success && verificationResult.data?.agent) {
+          logger.log('Token verified, auto-login successful');
+          await handleLogin(verificationResult.data.agent, storedAuth.token);
+        } else {
+          logger.log('Token verification failed');
+          clearAuth();
+        }
+      } catch (error) {
+        logger.error('Auto-login failed:', error);
+        clearAuth();
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkExistingAuth();
+  }, []); // Run only once on mount
 
   // Request notification permission on start
   useEffect(() => {
@@ -123,27 +161,14 @@ function App() {
         logger.error('Status error from server:', error);
         setError(error.message || 'Status update failed');
       },
-      /*  
-            new_message: (message) => {
-              logger.log('New message received:', message);
-              
-              // Only add message if still logged in
-              if (isLoggedInRef.current) {
-                setMessages(prev => [message, ...prev]);
-                showDesktopNotification(
-                  `Message from ${message.fromCode}`,
-                  message.content
-                );
-              }
-            },
-      */
+
       new_message: (message) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('📨 [NEW MESSAGE EVENT RECEIVED]');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('Message data:', JSON.stringify(message, null, 2));
         console.log('isLoggedInRef.current:', isLoggedInRef.current);
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
         // Validate message structure
         if (!message || !message.content) {
@@ -188,7 +213,7 @@ function App() {
             console.error('❌ Notification promise rejected:', error);
           });
 
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       },
 
       message_sent: (data) => {
@@ -227,16 +252,13 @@ function App() {
       socketRef.current = null;
       setConnectionStatus('disconnected');
     };
-  }, [isLoggedIn, agent]); // Dependencies are correct
+  }, [isLoggedIn, agent]);
 
   /**
    * Handle successful login
    */
   const handleLogin = useCallback(async (agentData, token) => {
     logger.log('Login successful:', agentData);
-
-    // Set authentication token
-    setAuthToken(token);
 
     // Set agent data and login state
     setAgent(agentData);
@@ -316,6 +338,18 @@ function App() {
   const clearError = useCallback(() => {
     setError(null);
   }, []);
+
+  // Show loading screen while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="app">
+        <div className="loading-screen">
+          <div className="loading-spinner"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="app">
