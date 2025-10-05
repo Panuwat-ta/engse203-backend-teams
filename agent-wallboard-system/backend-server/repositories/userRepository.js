@@ -34,13 +34,13 @@ class UserRepository {
           u.fullName,
           u.role,
           u.teamId,
-          t.name as teamName,
+          team_name as teamName,
           u.status,
           u.createdAt,
           u.updatedAt,
           u.lastLoginAt
         FROM Users u
-        LEFT JOIN Teams t ON u.teamId = t.id
+        LEFT JOIN Teams t ON u.teamId = team_id
         WHERE u.deletedAt IS NULL
       `;
       
@@ -83,13 +83,13 @@ class UserRepository {
           u.fullName,
           u.role,
           u.teamId,
-          t.name as teamName,
+          team_name as teamName,
           u.status,
           u.createdAt,
           u.updatedAt,
           u.lastLoginAt
         FROM Users u
-        LEFT JOIN Teams t ON u.teamId = t.id
+        LEFT JOIN Teams t ON u.teamId = team_id
         WHERE u.id = ? AND u.deletedAt IS NULL
       `;
       
@@ -112,13 +112,13 @@ class UserRepository {
           u.fullName,
           u.role,
           u.teamId,
-          t.name as teamName,
+          team_name as teamName,
           u.status,
           u.createdAt,
           u.updatedAt,
           u.lastLoginAt
         FROM Users u
-        LEFT JOIN Teams t ON u.teamId = t.id
+        LEFT JOIN Teams t ON u.teamId = team_id
         WHERE u.username = ? AND u.deletedAt IS NULL
       `;
       
@@ -187,42 +187,56 @@ class UserRepository {
    * - this.changes จะบอกจำนวน rows ที่ถูกอัพเดต
    * - ต้องมี AND deletedAt IS NULL เพื่อไม่ให้อัพเดต deleted users
    */
-  async update(userId, userData) {
-    return new Promise((resolve, reject) => {
-      // TODO: เขียนตามขั้นตอนด้านบน
-      // Step 1: สร้าง setClause
-      let setClause = 'updatedAt = CURRENT_TIMESTAMP';
-      const params = [];
-      
-      // Step 2-3: เพิ่ม fields ที่มีค่า
-      if (userData.fullName !== undefined) {
-        setClause += ', fullName = ?';
-        params.push(userData.fullName);
+async update(userId, userData) {
+  return new Promise((resolve, reject) => {
+    // Step 1: สร้าง setClause เริ่มต้น
+    let setClause = 'updatedAt = CURRENT_TIMESTAMP';
+    const params = [];
+
+    // Step 2-3: เพิ่ม fields ที่มีค่า
+    if (userData.fullName !== undefined) {
+      setClause += ', fullName = ?';
+      params.push(userData.fullName);
+    }
+
+    if (userData.role !== undefined) {
+      setClause += ', role = ?';
+      params.push(userData.role);
+    }
+
+    if (userData.teamId !== undefined) {
+      setClause += ', teamId = ?';
+      params.push(userData.teamId);
+    }
+
+    if (userData.status !== undefined) {
+      setClause += ', status = ?';
+      params.push(userData.status);
+    }
+
+    // Step 4: เพิ่ม userId เป็น parameter สุดท้าย
+    params.push(userId);
+
+    // Step 5: สร้าง query
+    const query = `
+      UPDATE Users 
+      SET ${setClause}
+      WHERE id = ? AND deletedAt IS NULL
+    `;
+
+    // Step 6-7: รัน query
+    this.db.run(query, params, function(err) {
+      if (err) {
+        reject(err);
+      } else if (this.changes === 0) {
+        reject(new Error('User not found or already deleted'));
+      } else {
+        resolve({ id: userId, ...userData });
       }
-      
-      // TODO: เพิ่ม role, teamId, status (ทำเหมือน fullName)
-      
-      // Step 4: เพิ่ม userId
-      params.push(userId);
-      
-      // Step 5-7: สร้าง query และรัน
-      const query = `
-        UPDATE Users 
-        SET ${setClause}
-        WHERE id = ? AND deletedAt IS NULL
-      `;
-      
-      this.db.run(query, params, function(err) {
-        if (err) {
-          reject(err);
-        } else if (this.changes === 0) {
-          reject(new Error('User not found or already deleted'));
-        } else {
-          resolve({ id: userId, ...userData });
-        }
-      });
     });
-  }
+  });
+}
+
 
   /**
    * Soft delete user

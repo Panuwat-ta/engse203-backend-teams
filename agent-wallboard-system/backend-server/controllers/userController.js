@@ -110,28 +110,29 @@ const userController = {
    * 
    * 💡 HINT: ดูตัวอย่างจาก createUser ด้านบน
    */
-  updateUser: async (req, res) => {
+ updateUser: async (req, res) => {
     try {
       const { id } = req.params;
       const userData = req.body;
-      
-      // TODO: เรียก userService.updateUser(id, userData)
-      // TODO: Return updated user
-      
-      res.status(501).json({
-        success: false,
-        message: 'Not implemented - TODO by student'
+
+      // เรียก service เพื่ออัพเดต user
+      const updatedUser = await userService.updateUser(id, userData);
+
+      res.status(200).json({
+        success: true,
+        message: 'User updated successfully',
+        data: updatedUser
       });
     } catch (error) {
       console.error('Error in updateUser:', error);
-      
+
       let statusCode = 500;
       if (error.message === 'User not found') {
         statusCode = 404;
       } else if (error.message.includes('cannot be changed') || error.message.includes('Invalid')) {
         statusCode = 400;
       }
-      
+
       res.status(statusCode).json({
         success: false,
         message: error.message
@@ -151,22 +152,22 @@ const userController = {
    *    - Success: status 200 + success message
    *    - Error: status 404/500 + error message
    */
-  deleteUser: async (req, res) => {
+ deleteUser: async (req, res) => {
     try {
       const { id } = req.params;
-      
-      // TODO: เรียก userService.deleteUser(id)
-      // TODO: Return success message
-      
-      res.status(501).json({
-        success: false,
-        message: 'Not implemented - TODO by student'
+
+      // เรียก service เพื่อลบ user (soft delete)
+      await userService.deleteUser(id);
+
+      res.status(200).json({
+        success: true,
+        message: 'User deleted successfully'
       });
     } catch (error) {
       console.error('Error in deleteUser:', error);
-      
+
       const statusCode = error.message === 'User not found' ? 404 : 500;
-      
+
       res.status(statusCode).json({
         success: false,
         message: error.message
@@ -174,5 +175,6 @@ const userController = {
     }
   }
 };
+
 
 module.exports = userController;

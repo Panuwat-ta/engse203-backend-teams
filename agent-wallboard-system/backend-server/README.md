@@ -47,6 +47,13 @@
 - ![alt text](./img/update-agent-status.png)
 - ![alt text](./img/send-message.png)
 - ![alt text](./img/get-agent-message.png)
+### users
+- ![alt text](./img/get-users.png)
+- ![alt text](./img/get-users-id.png)
+- ![alt text](./img/post-new-users.png)
+- ![alt text](./img/put-update-users.png)
+- ![alt text](./img/delete-users.png)
+- ![alt text](./img/Login-without-password.png)
 
 ## Testing Script (test-api.sh)
 - ![alt text](./img/test-api.png)
