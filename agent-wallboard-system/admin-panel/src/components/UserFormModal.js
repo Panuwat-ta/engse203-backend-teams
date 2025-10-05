@@ -113,10 +113,11 @@ const UserFormModal = ({ user, onClose, onSave }) => {
         e.preventDefault();
 
         if (validateForm()) {
-            onSave(formData);
+            const submitData = { ...formData };
+            if (user) delete submitData.username; // ลบ username ตอนแก้ไข
+            onSave(submitData);
         }
     };
-
 
     return React.createElement('div', { className: 'modal-overlay', onClick: onClose },
         React.createElement('div', {
