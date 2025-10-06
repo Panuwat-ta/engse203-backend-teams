@@ -269,27 +269,26 @@ function App() {
   }, [isLoggedIn, supervisor]);
 
   // Handlers
-  const handleLogin = (loginData) => {
-    console.log('✅ Login successful');
+const handleLogin = (loginData) => {
+    console.log('✅ Login successful', loginData);
 
     const supervisorData = {
-      supervisorCode: loginData.data.user.agentCode,
-      name: loginData.data.user.agentName,
-      teamId: loginData.data.user.teamId,
-      teamName: loginData.data.user.teamName,
-      email: loginData.data.user.email
+      supervisorCode: loginData.user.username,   // SP001
+      name: loginData.user.fullName,            // Supervisor Alpha
+      teamId: loginData.user.teamId,
+      teamName: loginData.user.teamName || '',  // ถ้าไม่มีให้ default ''
+      email: loginData.user.email || ''         // ถ้าไม่มีให้ default ''
     };
-
-    const rawTeamData = loginData.data.teamData || [];
-
-    // ✅ บันทึก token และ data
-    setToken(loginData.data.token);
+    const rawTeamData = loginData.teamData || [];
+    // บันทึก token และ data
+    setToken(loginData.token);
     setSupervisorData(supervisorData);
 
     setSupervisor(supervisorData);
     setTeamData(rawTeamData);
     setIsLoggedIn(true);
-  };
+};
+
 
   const handleLogout = () => {
     console.log('Logging out...');

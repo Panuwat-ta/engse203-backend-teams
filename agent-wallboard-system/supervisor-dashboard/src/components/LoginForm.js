@@ -36,38 +36,44 @@ function LoginForm({ onLogin }) {
     /**
      * Handle form submit
      */
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
+const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
 
-        // Validate input
-        const validationError = validateSupervisorCode(supervisorCode);
-        if (validationError) {
-            setError(validationError);
+    const validationError = validateSupervisorCode(supervisorCode);
+    if (validationError) {
+        setError(validationError);
+        return;
+    }
+
+    setLoading(true);
+    try {
+        const data = await loginSupervisor(supervisorCode.toUpperCase());
+        console.log('Login response:', data); // debug
+
+        // เช็ก data และ data.user ก่อนเข้าถึง role
+        if (!data || !data.user) {
+            setError('Invalid supervisor code or no user data returned');
             return;
         }
 
-        // เรียก API
-        setLoading(true);
-        try {
-            const response = await loginSupervisor(supervisorCode.toUpperCase());
-
-            // ตรวจสอบว่าเป็น supervisor จริง
-            if (response.data.user.role !== 'supervisor') {
-                setError('This code is not a supervisor account');
-                setLoading(false);
-                return;
-            }
-
-            // Login สำเร็จ → เรียก callback
-            onLogin(response);
-
-        } catch (err) {
-            setError(err.message || 'Login failed. Please check your code.');
-        } finally {
-            setLoading(false);
+        if (!data.user.role || data.user.role.toLowerCase() !== 'supervisor') {
+            setError('This code is not a supervisor account');
+            return;
         }
-    };
+
+        onLogin(data);
+
+    } catch (err) {
+        console.error(err);
+        setError(err.message || 'Login failed. Please check your code.');
+    } finally {
+        setLoading(false);
+    }
+};
+
+
+
 
     return (
         <Box

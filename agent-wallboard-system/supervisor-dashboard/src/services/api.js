@@ -7,7 +7,7 @@ export const loginSupervisor = async (supervisorCode) => {
   const response = await fetch(`${API_BASE_URL}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ supervisorCode })
+    body: JSON.stringify({ username: supervisorCode }) // ❌ backend ต้องการ { username: ... }
   });
 
   if (!response.ok) {
@@ -17,6 +17,7 @@ export const loginSupervisor = async (supervisorCode) => {
 
   return response.json();
 };
+
 
 /**
  * Send Message
