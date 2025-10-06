@@ -4,6 +4,11 @@ const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
 let socket = null;
 
 export const connectSocket = (agentCode) => {
+  if (!agentCode) {
+    console.error('connectSocket called with undefined agentCode');
+    return null;
+  }
+
   if (socket) disconnectSocket();
 
   console.log('Connecting to WebSocket...', SOCKET_URL);
@@ -60,6 +65,7 @@ export const connectSocket = (agentCode) => {
   window.socket = socket;
   return socket;
 };
+
 
 export const disconnectSocket = () => {
   if (socket) {

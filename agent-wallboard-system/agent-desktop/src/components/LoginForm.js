@@ -24,7 +24,7 @@ function LoginForm({ onLogin }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     const validationError = validateAgentCode(agentCode);
     if (validationError) {
       setError(validationError);
@@ -36,15 +36,16 @@ function LoginForm({ onLogin }) {
 
     try {
       const result = await loginAgent(agentCode.toUpperCase());
-      
+
       if (result.success) {
-        onLogin(result.data.user, result.data.token);
+        // ✅ แก้ตรงนี้
+        onLogin(result.user, result.token);
       } else {
         setError(result.error || 'Login failed');
       }
     } catch (err) {
       console.error('Login error:', err);
-      
+
       if (err.message.includes('fetch')) {
         setError('Cannot connect to server. Please check if backend is running.');
         setServerStatus('offline');
@@ -55,6 +56,7 @@ function LoginForm({ onLogin }) {
       setLoading(false);
     }
   };
+
 
   const handleRetry = () => {
     setError('');
@@ -67,13 +69,13 @@ function LoginForm({ onLogin }) {
         <div className="login-header">
           <h2>Agent Login</h2>
           <p>Enter your agent code to continue</p>
-          
+
           <div className={`server-status ${serverStatus}`}>
             <span className="status-dot"></span>
             <span>Server: {serverStatus}</span>
           </div>
         </div>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="agentCode">Agent Code</label>
@@ -91,22 +93,22 @@ function LoginForm({ onLogin }) {
               autoFocus
             />
           </div>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             disabled={loading || !agentCode.trim() || serverStatus === 'offline'}
             className="login-btn"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
-          
+
           {error && (
             <div className="error-message">
               <span>⚠️</span> {error}
               {serverStatus === 'offline' && (
-                <button 
-                  type="button" 
-                  onClick={handleRetry} 
+                <button
+                  type="button"
+                  onClick={handleRetry}
                   className="retry-btn"
                 >
                   Retry Connection
@@ -115,7 +117,7 @@ function LoginForm({ onLogin }) {
             </div>
           )}
         </form>
-        
+
         <div className="login-footer">
           <p>Sample codes: AG001, AG002, AG003</p>
           <p className="help-text">

@@ -18,7 +18,7 @@ export const loginAgent = async (agentCode) => {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentCode })
+      body: JSON.stringify({ username: agentCode })
     });
 
     const data = await response.json();

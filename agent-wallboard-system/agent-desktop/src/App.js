@@ -47,19 +47,22 @@ function App() {
   }, []);
 
   // Load existing messages
-  const loadMessages = useCallback(async (agentCode) => {
+  const loadMessages = useCallback(async (agentId) => {
+    if (!agentId) {
+      logger.error('Cannot load messages: agentId is undefined');
+      return;
+    }
     setLoadingMessages(true);
     try {
-      logger.log('Loading existing messages for', agentCode);
-      const messagesData = await getMessages(agentCode, 50);
-
+      const messagesData = await getMessages(agentId, 50);
       if (messagesData.success) {
-        const messageList = messagesData.messages || [];
-        logger.log('Loaded', messageList.length, 'messages');
-        setMessages(messageList);
+        setMessages(messagesData.messages || []);
+        logger.log('Loaded messages for', agentId);
+      } else {
+        logger.error('Failed to get messages:', messagesData.error);
       }
-    } catch (error) {
-      logger.error('Failed to load messages:', error);
+    } catch (err) {
+      logger.error('Failed to load messages:', err);
     } finally {
       setLoadingMessages(false);
     }
@@ -67,12 +70,11 @@ function App() {
 
   // WebSocket connection management with proper cleanup
   useEffect(() => {
-    if (!isLoggedIn || !agent) {
-      return;
-    }
+    if (!isLoggedIn || !agent) return;
 
-    logger.log('Setting up WebSocket connection for', agent.agentCode);
-    const socket = connectSocket(agent.agentCode);
+    const agentId = agent.agentCode || agent.username;
+    logger.log('Setting up WebSocket connection for', agentId);
+    const socket = connectSocket(agentId);
     socketRef.current = socket;
 
     if (!socket) {
@@ -87,43 +89,32 @@ function App() {
         setConnectionStatus('connected');
         setError(null);
       },
-
       disconnect: (reason) => {
         logger.log('WebSocket disconnected:', reason);
         setConnectionStatus('disconnected');
       },
-
-      connect_error: (error) => {
-        logger.error('WebSocket connection error:', error);
+      connect_error: (err) => {
+        logger.error('WebSocket connection error:', err);
         setConnectionStatus('error');
         setError('Failed to connect to server');
       },
-
       reconnect: (attemptNumber) => {
         logger.log('WebSocket reconnected after', attemptNumber, 'attempts');
         setConnectionStatus('connected');
         setError(null);
       },
-
       connection_success: (data) => {
         logger.log('WebSocket authentication successful:', data);
       },
-
-      connection_error: (error) => {
-        logger.error('Connection error from server:', error);
-        setError(error.message || 'Connection error');
+      connection_error: (err) => {
+        logger.error('Connection error from server:', err);
+        setError(err.message || 'Connection error');
       },
-
-      status_updated: (data) => {
-        logger.log('Status updated:', data);
-        setStatus(data.status);
-      },
-
-      status_error: (error) => {
-        logger.error('Status error from server:', error);
-        setError(error.message || 'Status update failed');
-      },
-      /*  
+      status_updated: (data) => setStatus(data.status),
+      status_error: (err) => {
+        logger.error('Status error:', err);
+        setError(err.message || 'Status update failed');
+      },      /*  
             new_message: (message) => {
               logger.log('New message received:', message);
               
@@ -144,14 +135,11 @@ function App() {
         console.log('Message data:', JSON.stringify(message, null, 2));
         console.log('isLoggedInRef.current:', isLoggedInRef.current);
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-        // Validate message structure
         if (!message || !message.content) {
           console.error('❌ Invalid message structure');
           return;
         }
 
-        // Check if logged in
         if (!isLoggedInRef.current) {
           console.error('❌ User not logged in');
           return;
@@ -161,10 +149,8 @@ function App() {
         console.log('📝 Adding message to state...');
         setMessages(prev => {
           const isDuplicate = prev.some(m =>
-            m._id === message._id ||
-            m.messageId === message.messageId
+            m._id === message._id || m.messageId === message.messageId
           );
-
           if (isDuplicate) {
             console.warn('⚠️ Duplicate message, skipping');
             return prev;
@@ -176,56 +162,31 @@ function App() {
 
         // Show notification
         console.log('🔔 Calling showDesktopNotification...');
-        const notificationTitle = message.type === 'broadcast'
-          ? `Broadcast from ${message.fromCode}`
-          : `Message from ${message.fromCode}`;
-
-        showDesktopNotification(notificationTitle, message.content)
-          .then(result => {
-            console.log('✅ Notification promise resolved:', result);
-          })
-          .catch(error => {
-            console.error('❌ Notification promise rejected:', error);
-          });
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        showDesktopNotification(
+          message.type === 'broadcast'
+            ? `Broadcast from ${message.fromCode}`
+            : `Message from ${message.fromCode}`,
+          message.content
+        ).catch(err => console.error('Notification error:', err));
       },
-
-      message_sent: (data) => {
-        logger.log('Message sent confirmation:', data);
-      },
-
-      message_error: (error) => {
-        logger.error('Message error from server:', error);
-      },
-
-      agent_connected: (data) => {
-        logger.log('Agent connected:', data);
-      },
-
-      agent_disconnected: (data) => {
-        logger.log('Agent disconnected:', data);
-      }
+      message_sent: (data) => logger.log('Message sent confirmation:', data),
+      message_error: (err) => logger.error('Message error from server:', err),
+      agent_connected: (data) => logger.log('Agent connected:', data),
+      agent_disconnected: (data) => logger.log('Agent disconnected:', data)
     };
 
-    // Register all event handlers
-    Object.entries(handlers).forEach(([event, handler]) => {
-      socket.on(event, handler);
-    });
+    Object.entries(handlers).forEach(([event, handler]) => socket.on(event, handler));
 
-    // Cleanup function - CRITICAL for preventing memory leaks
     return () => {
       logger.log('Cleaning up WebSocket connection');
 
       // Remove all event listeners
-      Object.entries(handlers).forEach(([event, handler]) => {
-        socket.off(event, handler);
-      });
-
+      Object.entries(handlers).forEach(([event, handler]) => socket.off(event, handler));
       // Disconnect socket
       disconnectSocket();
       socketRef.current = null;
       setConnectionStatus('disconnected');
+      logger.log('WebSocket cleaned up');
     };
   }, [isLoggedIn, agent]); // Dependencies are correct
 
@@ -233,7 +194,14 @@ function App() {
    * Handle successful login
    */
   const handleLogin = useCallback(async (agentData, token) => {
-    logger.log('Login successful:', agentData);
+    if (!agentData || !token) {
+      logger.error('Invalid login data', agentData, token);
+      setError('Login failed: missing agent data or token');
+      return;
+    }
+
+    const agentId = agentData.agentCode || agentData.username;
+    logger.log('Login successful:', agentId);
 
     // Set authentication token
     setAuthToken(token);
@@ -245,7 +213,7 @@ function App() {
     setError(null);
 
     // Load existing messages
-    await loadMessages(agentData.agentCode);
+    await loadMessages(agentId);
   }, [loadMessages]);
 
   /**
@@ -254,12 +222,9 @@ function App() {
   const handleLogout = useCallback(async () => {
     logger.log('Logging out');
 
-    try {
-      // Call logout API
-      await logoutAgent();
-    } catch (error) {
-      logger.error('Logout API call failed:', error);
-    }
+    try { await logoutAgent(); } // Call logout API
+
+    catch (err) { logger.error('Logout API failed:', err); }
 
     // Disconnect WebSocket (cleanup in useEffect will handle listener removal)
     disconnectSocket();
@@ -286,24 +251,17 @@ function App() {
     const previousStatus = status;
     setStatus(newStatus);
 
-    try {
-      // Method 1: Try WebSocket first (real-time)
-      const socketSuccess = sendStatusUpdate(agent.agentCode, newStatus);
+    const agentId = agent.agentCode || agent.username;
 
-      if (socketSuccess) {
-        logger.log('Status update sent via WebSocket');
-      } else {
-        // Method 2: Fallback to HTTP API
-        logger.log('WebSocket not connected, using HTTP API fallback');
-        await updateAgentStatus(agent.agentCode, newStatus);
-        logger.log('Status updated via HTTP API');
-      }
-    } catch (error) {
-      logger.error('Status update failed:', error);
+    try {
+      const sent = sendStatusUpdate(agentId, newStatus);
+      if (!sent) await updateAgentStatus(agentId, newStatus);
+    } catch (err) {
+      logger.error('Status update failed:', err);
 
       // Revert to previous status on error
       setStatus(previousStatus);
-      setError('Failed to update status. Please try again.');
+      setError('Failed to update status');
 
       // Clear error after 3 seconds
       setTimeout(() => setError(null), 3000);
@@ -313,9 +271,7 @@ function App() {
   /**
    * Clear error message
    */
-  const clearError = useCallback(() => {
-    setError(null);
-  }, []);
+  const clearError = useCallback(() => setError(null), []);
 
   return (
     <div className="app">
@@ -333,9 +289,7 @@ function App() {
       {error && (
         <div className="error-banner">
           <span>{error}</span>
-          <button onClick={clearError} className="error-close" aria-label="Close error">
-            ×
-          </button>
+          <button onClick={clearError} className="error-close">×</button>
         </div>
       )}
 
@@ -346,13 +300,7 @@ function App() {
         <div className="dashboard">
           <div className="dashboard-header">
             <AgentInfo agent={agent} status={status} />
-            <button
-              onClick={handleLogout}
-              className="logout-btn"
-              aria-label="Logout"
-            >
-              Logout
-            </button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
 
           <StatusPanel
@@ -363,7 +311,7 @@ function App() {
 
           <MessagePanel
             messages={messages}
-            agentCode={agent?.agentCode}
+            agentCode={agent?.agentCode || agent?.username}
             loading={loadingMessages}
           />
         </div>
