@@ -43,27 +43,27 @@ class UserRepository {
         LEFT JOIN Teams t ON u.teamId = team_id
         WHERE u.deletedAt IS NULL
       `;
-      
+
       const params = [];
-      
+
       // Add filters
       if (filters.role) {
         query += ' AND u.role = ?';
         params.push(filters.role);
       }
-      
+
       if (filters.status) {
         query += ' AND u.status = ?';
         params.push(filters.status);
       }
-      
+
       if (filters.teamId) {
         query += ' AND u.teamId = ?';
         params.push(filters.teamId);
       }
-      
+
       query += ' ORDER BY u.createdAt DESC';
-      
+
       this.db.all(query, params, (err, rows) => {
         if (err) reject(err);
         else resolve(rows);
@@ -92,10 +92,32 @@ class UserRepository {
         LEFT JOIN Teams t ON u.teamId = team_id
         WHERE u.id = ? AND u.deletedAt IS NULL
       `;
-      
+
       this.db.get(query, [userId], (err, row) => {
         if (err) reject(err);
         else resolve(row);
+      });
+    });
+  }
+
+  /**
+ * Find team by ID
+ * @param {number} teamId 
+ * @returns {Promise<Object|null>} { teamName } หรือ null
+ */
+  async findTeamById(teamId) {
+    return new Promise((resolve, reject) => {
+      if (!teamId) return resolve(null);
+
+      const query = `
+      SELECT team_name as teamName
+      FROM Teams
+      WHERE team_id = ?
+    `;
+
+      this.db.get(query, [teamId], (err, row) => {
+        if (err) reject(err);
+        else resolve(row || null);
       });
     });
   }
@@ -121,7 +143,7 @@ class UserRepository {
         LEFT JOIN Teams t ON u.teamId = team_id
         WHERE u.username = ? AND u.deletedAt IS NULL
       `;
-      
+
       this.db.get(query, [username], (err, row) => {
         if (err) reject(err);
         else resolve(row);
@@ -138,7 +160,7 @@ class UserRepository {
         INSERT INTO Users (username, fullName, role, teamId, status)
         VALUES (?, ?, ?, ?, ?)
       `;
-      
+
       const params = [
         userData.username,
         userData.fullName,
@@ -146,8 +168,8 @@ class UserRepository {
         userData.teamId || null,
         userData.status || 'Active'
       ];
-      
-      this.db.run(query, params, function(err) {
+
+      this.db.run(query, params, function (err) {
         if (err) {
           reject(err);
         } else {
@@ -187,55 +209,55 @@ class UserRepository {
    * - this.changes จะบอกจำนวน rows ที่ถูกอัพเดต
    * - ต้องมี AND deletedAt IS NULL เพื่อไม่ให้อัพเดต deleted users
    */
-async update(userId, userData) {
-  return new Promise((resolve, reject) => {
-    // Step 1: สร้าง setClause เริ่มต้น
-    let setClause = 'updatedAt = CURRENT_TIMESTAMP';
-    const params = [];
+  async update(userId, userData) {
+    return new Promise((resolve, reject) => {
+      // Step 1: สร้าง setClause เริ่มต้น
+      let setClause = 'updatedAt = CURRENT_TIMESTAMP';
+      const params = [];
 
-    // Step 2-3: เพิ่ม fields ที่มีค่า
-    if (userData.fullName !== undefined) {
-      setClause += ', fullName = ?';
-      params.push(userData.fullName);
-    }
+      // Step 2-3: เพิ่ม fields ที่มีค่า
+      if (userData.fullName !== undefined) {
+        setClause += ', fullName = ?';
+        params.push(userData.fullName);
+      }
 
-    if (userData.role !== undefined) {
-      setClause += ', role = ?';
-      params.push(userData.role);
-    }
+      if (userData.role !== undefined) {
+        setClause += ', role = ?';
+        params.push(userData.role);
+      }
 
-    if (userData.teamId !== undefined) {
-      setClause += ', teamId = ?';
-      params.push(userData.teamId);
-    }
+      if (userData.teamId !== undefined) {
+        setClause += ', teamId = ?';
+        params.push(userData.teamId);
+      }
 
-    if (userData.status !== undefined) {
-      setClause += ', status = ?';
-      params.push(userData.status);
-    }
+      if (userData.status !== undefined) {
+        setClause += ', status = ?';
+        params.push(userData.status);
+      }
 
-    // Step 4: เพิ่ม userId เป็น parameter สุดท้าย
-    params.push(userId);
+      // Step 4: เพิ่ม userId เป็น parameter สุดท้าย
+      params.push(userId);
 
-    // Step 5: สร้าง query
-    const query = `
+      // Step 5: สร้าง query
+      const query = `
       UPDATE Users 
       SET ${setClause}
       WHERE id = ? AND deletedAt IS NULL
     `;
 
-    // Step 6-7: รัน query
-    this.db.run(query, params, function(err) {
-      if (err) {
-        reject(err);
-      } else if (this.changes === 0) {
-        reject(new Error('User not found or already deleted'));
-      } else {
-        resolve({ id: userId, ...userData });
-      }
+      // Step 6-7: รัน query
+      this.db.run(query, params, function (err) {
+        if (err) {
+          reject(err);
+        } else if (this.changes === 0) {
+          reject(new Error('User not found or already deleted'));
+        } else {
+          resolve({ id: userId, ...userData });
+        }
+      });
     });
-  });
-}
+  }
 
 
   /**
@@ -250,8 +272,8 @@ async update(userId, userData) {
             updatedAt = CURRENT_TIMESTAMP
         WHERE id = ? AND deletedAt IS NULL
       `;
-      
-      this.db.run(query, [userId], function(err) {
+
+      this.db.run(query, [userId], function (err) {
         if (err) {
           reject(err);
         } else if (this.changes === 0) {
@@ -273,8 +295,8 @@ async update(userId, userData) {
         SET lastLoginAt = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
-      
-      this.db.run(query, [userId], function(err) {
+
+      this.db.run(query, [userId], function (err) {
         if (err) {
           reject(err);
         } else {
@@ -294,7 +316,7 @@ async update(userId, userData) {
         FROM Users 
         WHERE username = ? AND deletedAt IS NULL
       `;
-      
+
       this.db.get(query, [username], (err, row) => {
         if (err) reject(err);
         else resolve(row.count > 0);

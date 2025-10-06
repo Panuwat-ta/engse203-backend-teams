@@ -19,7 +19,7 @@ const authService = {
     try {
       // 1. Find user by username
       const user = await userRepository.findByUsername(username);
-      
+
       if (!user) {
         throw new Error('Invalid username');
       }
@@ -43,6 +43,13 @@ const authService = {
       // 4. Update last login timestamp
       await userRepository.updateLastLogin(user.id);
 
+      // Get team name (if any)
+      let teamName = null;
+      if (user.teamId) {
+        const team = await userRepository.findTeamById(user.teamId);
+        teamName = team?.teamName || null;
+      }
+
       // 5. Return user data และ token
       return {
         success: true,
@@ -51,7 +58,8 @@ const authService = {
           username: user.username,
           fullName: user.fullName,
           role: user.role,
-          teamId: user.teamId
+          teamId: user.teamId,
+          teamName: teamName
         },
         token: token,
         expiresIn: JWT_EXPIRES_IN
