@@ -25,7 +25,7 @@ function AgentInfo({ agent, status }) {
         <div className="agent-meta">
           <div className="agent-code">
             <span className="label">Code:</span>
-            <span className="value">{agent.agentCode}</span>
+            <span className="value">{agent.username}</span>
           </div>
           
           <div className="agent-team">
