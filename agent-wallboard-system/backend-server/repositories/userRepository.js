@@ -34,13 +34,13 @@ class UserRepository {
           u.fullName,
           u.role,
           u.teamId,
-          team_name as teamName,
+          t.team_name as teamName,
           u.status,
           u.createdAt,
           u.updatedAt,
           u.lastLoginAt
-        FROM Users u
-        LEFT JOIN Teams t ON u.teamId = team_id
+        FROM users u
+        LEFT JOIN Teams t ON u.teamId = t.team_id
         WHERE u.deletedAt IS NULL
       `;
 
@@ -83,13 +83,13 @@ class UserRepository {
           u.fullName,
           u.role,
           u.teamId,
-          team_name as teamName,
+          t.team_name as teamName,
           u.status,
           u.createdAt,
           u.updatedAt,
           u.lastLoginAt
-        FROM Users u
-        LEFT JOIN Teams t ON u.teamId = team_id
+        FROM users u
+        LEFT JOIN Teams t ON u.teamId = t.team_id
         WHERE u.id = ? AND u.deletedAt IS NULL
       `;
 
@@ -134,13 +134,13 @@ class UserRepository {
           u.fullName,
           u.role,
           u.teamId,
-          team_name as teamName,
+          t.team_name as teamName,
           u.status,
           u.createdAt,
           u.updatedAt,
           u.lastLoginAt
-        FROM Users u
-        LEFT JOIN Teams t ON u.teamId = team_id
+        FROM users u
+        LEFT JOIN Teams t ON u.teamId = t.team_id
         WHERE u.username = ? AND u.deletedAt IS NULL
       `;
 
@@ -157,7 +157,7 @@ class UserRepository {
   async create(userData) {
     return new Promise((resolve, reject) => {
       const query = `
-        INSERT INTO Users (username, fullName, role, teamId, status)
+        INSERT INTO users (username, fullName, role, teamId, status)
         VALUES (?, ?, ?, ?, ?)
       `;
 
@@ -197,7 +197,7 @@ class UserRepository {
    *        params.push(userData.fullName)
    *    - ทำเหมือนกันกับ role, teamId, status
    * 4. เพิ่ม userId เป็น parameter สุดท้าย: params.push(userId)
-   * 5. สร้าง query: UPDATE Users SET ${setClause} WHERE id = ? AND deletedAt IS NULL
+   * 5. สร้าง query: UPDATE users SET ${setClause} WHERE id = ? AND deletedAt IS NULL
    * 6. รัน this.db.run(query, params, callback)
    * 7. ใน callback:
    *    - ถ้า err: reject(err)
@@ -241,7 +241,7 @@ class UserRepository {
 
       // Step 5: สร้าง query
       const query = `
-      UPDATE Users 
+      UPDATE users 
       SET ${setClause}
       WHERE id = ? AND deletedAt IS NULL
     `;
@@ -266,7 +266,7 @@ class UserRepository {
   async softDelete(userId) {
     return new Promise((resolve, reject) => {
       const query = `
-        UPDATE Users 
+        UPDATE users 
         SET status = 'Inactive', 
             deletedAt = CURRENT_TIMESTAMP,
             updatedAt = CURRENT_TIMESTAMP
@@ -291,7 +291,7 @@ class UserRepository {
   async updateLastLogin(userId) {
     return new Promise((resolve, reject) => {
       const query = `
-        UPDATE Users 
+        UPDATE users 
         SET lastLoginAt = CURRENT_TIMESTAMP
         WHERE id = ?
       `;
@@ -313,7 +313,7 @@ class UserRepository {
     return new Promise((resolve, reject) => {
       const query = `
         SELECT COUNT(*) as count 
-        FROM Users 
+        FROM users 
         WHERE username = ? AND deletedAt IS NULL
       `;
 

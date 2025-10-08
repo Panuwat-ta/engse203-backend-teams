@@ -1,26 +1,26 @@
 -- ========================================
--- Task#1: Sample Users Data
+-- Task#1: Sample users Data
 -- ========================================
 
 -- เปิดใช้งาน Foreign Key constraints
 PRAGMA foreign_keys = ON;
 
 -- ล้างข้อมูลเดิม (ถ้ามี)
-DELETE FROM Users;
+DELETE FROM users;
 
 -- Insert Admin users
-INSERT INTO Users (username, fullName, role, teamId, status) VALUES
+INSERT INTO users (username, fullName, role, teamId, status) VALUES
 ('AD001', 'Admin One', 'Admin', NULL, 'Active'),
 ('AD002', 'Admin Two', 'Admin', NULL, 'Active');
 
 -- Insert Supervisor users (assuming Teams with id 1,2,3 exist)
-INSERT INTO Users (username, fullName, role, teamId, status) VALUES
+INSERT INTO users (username, fullName, role, teamId, status) VALUES
 ('SP001', 'Supervisor Alpha', 'Supervisor', 1, 'Active'),
 ('SP002', 'Supervisor Beta', 'Supervisor', 2, 'Active'),
 ('SP003', 'Supervisor Gamma', 'Supervisor', 3, 'Active');
 
 -- Insert Agent users
-INSERT INTO Users (username, fullName, role, teamId, status) VALUES
+INSERT INTO users (username, fullName, role, teamId, status) VALUES
 ('AG001', 'Agent Smith', 'Agent', 1, 'Active'),
 ('AG002', 'Agent Johnson', 'Agent', 1, 'Active'),
 ('AG003', 'Agent Williams', 'Agent', 1, 'Active'),
@@ -39,5 +39,5 @@ SELECT
     teamId,
     status,
     createdAt
-FROM Users
+FROM users
 ORDER BY role, username;

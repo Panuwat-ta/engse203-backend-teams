@@ -10,7 +10,7 @@ PRAGMA foreign_keys = ON;
 DROP TABLE IF EXISTS Users;
 
 -- สร้างตาราง Users
-CREATE TABLE Users (
+CREATE TABLE users (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT NOT NULL UNIQUE,
     fullName TEXT NOT NULL,
