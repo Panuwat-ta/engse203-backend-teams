@@ -166,7 +166,7 @@ async updateUser(userId, userData) {
    * 4. Return success message
    *    - return { success: true, message: 'User deleted successfully' }
    */
-async deleteUser(userId) {
+async deleteUser(userId, currentUserId = null) {
   try {
     // 1. ตรวจสอบว่า user มีอยู่จริง
     const user = await userRepository.findById(userId);
@@ -174,11 +174,10 @@ async deleteUser(userId) {
       throw new Error('User not found');
     }
 
-    // 2. (Optional) ป้องกันการลบตัวเอง
-    // ตัวอย่าง: ถ้าใช้ session หรือ context
-    // if (currentUser.id === userId) {
-    //   throw new Error('Cannot delete yourself');
-    // }
+    // 2. ป้องกันการลบตัวเอง (Optional)
+    if (currentUserId && currentUserId === userId) {
+      throw new Error('Cannot delete yourself');
+    }
 
     // 3. Soft delete
     await userRepository.softDelete(userId);

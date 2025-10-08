@@ -269,7 +269,7 @@ function App() {
   }, [isLoggedIn, supervisor]);
 
   // Handlers
-const handleLogin = (loginData) => {
+  const handleLogin = async (loginData) => {
     console.log('✅ Login successful', loginData);
 
     const supervisorData = {
@@ -279,21 +279,46 @@ const handleLogin = (loginData) => {
       teamName: loginData.user.teamName || '',  // ถ้าไม่มีให้ default ''
       email: loginData.user.email || ''         // ถ้าไม่มีให้ default ''
     };
-    const rawTeamData = loginData.teamData || [];
-    // บันทึก token และ data
+
+    // แปลงข้อมูล agent ให้เป็นรูปแบบที่ UI ใช้ทันทีหลัง login
+    const rawTeamData = loginData.teamData || loginData.agents || [];
+
+    // บันทึก token และ data ก่อนเรียก API เพิ่มเติม
     setToken(loginData.token);
     setSupervisorData(supervisorData);
-
     setSupervisor(supervisorData);
-    setTeamData(rawTeamData);
+
+    try {
+      let finalAgents = [];
+      if (Array.isArray(rawTeamData) && rawTeamData.length > 0) {
+        finalAgents = transformAgents(rawTeamData, supervisorData.teamId);
+      } else {
+        // ถ้า login response ไม่มี agent list ให้ดึงจาก API ทันที
+        const resp = await fetch(
+          `${process.env.REACT_APP_API_URL}/agents/team/${supervisorData.teamId}`,
+          { headers: { 'Authorization': `Bearer ${loginData.token}` } }
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          finalAgents = transformAgents(data.agents || [], supervisorData.teamId);
+        } else {
+          console.warn('⚠️ Unable to fetch team agents after login');
+        }
+      }
+
+      setTeamData(finalAgents);
+    } catch (e) {
+      console.error('❌ Failed to load team agents after login:', e);
+      setTeamData([]);
+    }
+
+    // แสดง Dashboard หลังจากตั้งค่า teamData แล้ว เพื่อลดการ flash ว่าไม่มีข้อมูล
     setIsLoggedIn(true);
-};
+  };
 
 
   const handleLogout = () => {
     console.log('Logging out...');
-
-    // ✅ ลบ saved data
     clearToken();
 
     disconnectSocket();
