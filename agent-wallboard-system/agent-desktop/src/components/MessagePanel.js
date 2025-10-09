@@ -3,7 +3,7 @@ import { formatTime, getTimeAgo } from '../utils/dateUtils';
 import { markMessageAsRead } from '../services/api';
 import '../styles/MessagePanel.css';
 
-function MessagePanel({ messages, agentCode, loading = false }) {
+function MessagePanel({ messages, username, loading = false }) {
   const messagesEndRef = useRef(null);
   const messageListRef = useRef(null);
   const [markingRead, setMarkingRead] = useState(new Set());

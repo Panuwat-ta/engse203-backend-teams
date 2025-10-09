@@ -55,11 +55,9 @@ ipcMain.handle('get-app-version', () => {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 800,
+    width: 1024,
     height: 700,
     minWidth: 350,
-    minHeight: 600,
-    maxWidth: 500,
     icon: path.join(__dirname, 'public/assets/icon.png'),
     webPreferences: {
       nodeIntegration: false,
@@ -86,9 +84,9 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     console.log('Window ready to show');
     mainWindow.show();
-    if (isDev) {
+    /*if (isDev) {
       mainWindow.webContents.openDevTools();
-    }
+    }*/
   });
 
   // Handle window close

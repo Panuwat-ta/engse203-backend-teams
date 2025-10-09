@@ -13,22 +13,26 @@ export const clearAuthToken = () => {
 
 export const getAuthToken = () => authToken;
 
-export const loginAgent = async (agentCode) => {
+export const loginAgent = async (username) => {  // ✅ เปลี่ยนชื่อ parameter
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ agentCode })
+      body: JSON.stringify({ username })  // ✅ เปลี่ยนเป็น username
     });
 
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.error || 'Login failed');
+      throw new Error(data.message || 'Login failed');  // ✅ เปลี่ยนจาก data.error
     }
     
-    if (data.data?.token) {
-      setAuthToken(data.data.token);
+    // ✅ ปรับ response structure
+    if (data.success && data.user) {
+      const token = data.user.token || data.token;  // ✅ รองรับทั้ง 2 format
+      if (token) {
+        setAuthToken(token);
+      }
     }
     
     return data;
@@ -58,13 +62,14 @@ export const logoutAgent = async () => {
   }
 };
 
-export const getMessages = async (agentCode, limit = 50, unreadOnly = false) => {
+export const getMessages = async (username, limit = 50, unreadOnly = false) => {  // ✅ เปลี่ยน parameter
   try {
     if (!authToken) {
       throw new Error('Not authenticated');
     }
 
-    const url = `${API_BASE_URL}/messages/agent/${agentCode}?limit=${limit}&unreadOnly=${unreadOnly}`;
+    // ✅ เปลี่ยน URL path
+    const url = `${API_BASE_URL}/messages/agent/${username}?limit=${limit}&unreadOnly=${unreadOnly}`;
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -75,7 +80,7 @@ export const getMessages = async (agentCode, limit = 50, unreadOnly = false) => 
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to get messages');
+      throw new Error(data.message || 'Failed to get messages');  // ✅ เปลี่ยนจาก data.error
     }
     
     return data;
@@ -111,13 +116,15 @@ export const markMessageAsRead = async (messageId) => {
   }
 };
 
-export const updateAgentStatus = async (agentCode, status) => {
+// ✅ ใหม่
+export const updateAgentStatus = async (username, status) => {  // ✅ เปลี่ยน parameter
   try {
     if (!authToken) {
       throw new Error('Not authenticated');
     }
 
-    const response = await fetch(`${API_BASE_URL}/agents/${agentCode}/status`, {
+    // ✅ เปลี่ยน URL path
+    const response = await fetch(`${API_BASE_URL}/agents/${username}/status`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -129,7 +136,7 @@ export const updateAgentStatus = async (agentCode, status) => {
     const data = await response.json();
     
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to update status');
+      throw new Error(data.message || 'Failed to update status');  // ✅ เปลี่ยนจาก data.error
     }
     
     return data;

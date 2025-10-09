@@ -1,64 +1,86 @@
+// services/socket.js - Version 4.0
+// ⚠️ WebSocket ยังใช้ agentCode ตาม Backend socketHandler
+// ไม่ต้องแก้ไขไฟล์นี้!
+
 import io from 'socket.io-client';
 
 const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
 let socket = null;
 
-export const connectSocket = (agentCode) => {
-  if (socket) disconnectSocket();
+/**
+ * ✅ ยังใช้ agentCode ตามเดิม
+ * เพราะ Backend WebSocket handler ยังไม่ได้ update
+ */
+export const connectSocket = (agentCode, role = 'Agent') => {
+  // Validation
+  if (!agentCode) {
+    console.error('❌ connectSocket: agentCode is required');
+    return null;
+  }
 
-  console.log('Connecting to WebSocket...', SOCKET_URL);
+  if (typeof agentCode !== 'string') {
+    console.error('❌ connectSocket: agentCode must be a string', agentCode);
+    return null;
+  }
 
-  socket = io(SOCKET_URL, {
-    query: {
-      agentCode: agentCode.toUpperCase(),
-      type: 'agent'
-    },
-    timeout: 20000,
-    reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
-    reconnectionDelayMax: 5000
-  });
+  // Disconnect existing
+  if (socket) {
+    console.log('Disconnecting existing socket...');
+    disconnectSocket();
+  }
 
-  socket.on('connect', () => {
-    console.log('WebSocket connected:', socket.id);
-    socket.emit('agent_connect', { agentCode: agentCode.toUpperCase() });
-  });
+  console.log('🔌 Connecting to WebSocket...', SOCKET_URL);
+  console.log('📋 Agent Code:', agentCode, 'Role:', role);
 
-  socket.on('disconnect', (reason) => {
-    console.log('WebSocket disconnected:', reason);
-  });
+  try {
+    socket = io(SOCKET_URL, {
+      query: {
+        agentCode: agentCode.toUpperCase(),  // ⬅️ ยังใช้ agentCode
+        role: role,
+        type: 'agent'
+      },
+      timeout: 20000,
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
+    });
 
-  socket.on('connect_error', (error) => {
-    console.error('WebSocket connection error:', error);
-  });
+    socket.on('connect', () => {
+      console.log('✅ WebSocket connected:', socket.id);
+      socket.emit('agent_connect', { 
+        agentCode: agentCode.toUpperCase(),  // ⬅️ ยังใช้ agentCode
+        role: role 
+      });
+    });
 
-  socket.on('reconnect', (attemptNumber) => {
-    console.log('WebSocket reconnected after', attemptNumber, 'attempts');
-  });
+    socket.on('disconnect', (reason) => {
+      console.log('🔌 WebSocket disconnected:', reason);
+    });
 
-  socket.on('reconnect_error', (error) => {
-    console.error('WebSocket reconnection error:', error);
-  });
+    socket.on('connect_error', (error) => {
+      console.error('❌ WebSocket connection error:', error);
+    });
 
-  socket.on('reconnect_failed', () => {
-    console.error('WebSocket reconnection failed after all attempts');
-  });
+    socket.on('reconnect', (attemptNumber) => {
+      console.log('🔄 WebSocket reconnected after', attemptNumber, 'attempts');
+    });
 
-  socket.on('connection_error', (error) => {
-    console.error('Connection error from server:', error);
-  });
+    socket.on('reconnect_error', (error) => {
+      console.error('❌ WebSocket reconnection error:', error);
+    });
 
-  socket.on('status_error', (error) => {
-    console.error('Status update error from server:', error);
-  });
+    socket.on('reconnect_failed', () => {
+      console.error('❌ WebSocket reconnection failed');
+    });
 
-  socket.on('message_error', (error) => {
-    console.error('Message error from server:', error);
-  });
-
-  window.socket = socket;
-  return socket;
+    window.socket = socket;
+    return socket;
+    
+  } catch (error) {
+    console.error('❌ Failed to create socket:', error);
+    return null;
+  }
 };
 
 export const disconnectSocket = () => {
@@ -70,16 +92,25 @@ export const disconnectSocket = () => {
   }
 };
 
+/**
+ * ✅ ยังใช้ agentCode
+ */
 export const sendStatusUpdate = (agentCode, status) => {
+  if (!agentCode) {
+    console.error('❌ sendStatusUpdate: agentCode is required');
+    return false;
+  }
+
   if (socket && socket.connected) {
-    console.log('Sending status update via WebSocket:', { agentCode, status });
+    console.log('📤 Sending status update:', { agentCode, status });
     socket.emit('update_status', {
       agentCode: agentCode.toUpperCase(),
       status: status
     });
     return true;
   }
-  console.warn('Socket not connected, cannot send status update');
+  
+  console.warn('⚠️ Socket not connected');
   return false;
 };
 

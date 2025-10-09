@@ -1,3 +1,5 @@
+// components/AgentInfo.js - Version 4.0
+
 import React from 'react';
 
 function AgentInfo({ agent, status }) {
@@ -20,18 +22,31 @@ function AgentInfo({ agent, status }) {
       </div>
       
       <div className="agent-details">
-        <h3 className="agent-name">{agent.agentName}</h3>
+        {/* ✅ เปลี่ยนจาก agentName เป็น fullName */}
+        <h3 className="agent-name">{agent.fullName}</h3>
         
         <div className="agent-meta">
           <div className="agent-code">
             <span className="label">Code:</span>
-            <span className="value">{agent.agentCode}</span>
+            {/* ✅ เปลี่ยนจาก agentCode เป็น username */}
+            <span className="value">{agent.username}</span>
           </div>
           
-          <div className="agent-team">
-            <span className="label">Team:</span>
-            <span className="value">{agent.teamName || 'N/A'}</span>
+          {/* ✅ เพิ่มการแสดง role */}
+          <div className="agent-role">
+            <span className="label">Role:</span>
+            <span className="value">{agent.role}</span>
           </div>
+          
+          {/* ✅ แสดง Team เฉพาะ Agent/Supervisor */}
+          {(agent.role === 'Agent' || agent.role === 'Supervisor') && (
+            <div className="agent-team">
+              <span className="label">Team:</span>
+              <span className="value">
+                {agent.teamName || `Team ${agent.teamId}` || 'N/A'}
+              </span>
+            </div>
+          )}
         </div>
         
         <div className="agent-status">
@@ -39,7 +54,8 @@ function AgentInfo({ agent, status }) {
             className="status-dot"
             style={{ backgroundColor: getStatusColor(status) }}
           ></span>
-          <span className="status-text">{status}</span>
+          {/* ✅ แสดง status จาก user object หรือ prop */}
+          <span className="status-text">{agent.status || status}</span>
         </div>
       </div>
     </div>

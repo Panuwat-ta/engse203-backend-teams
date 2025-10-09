@@ -1,9 +1,11 @@
+// components/LoginForm.js - Version 4.0
+
 import React, { useState, useEffect } from 'react';
 import { loginAgent, checkServerHealth } from '../services/api';
 import { validateAgentCode } from '../utils/validation';
 
 function LoginForm({ onLogin }) {
-  const [agentCode, setAgentCode] = useState('');
+  const [username, setUsername] = useState('');  // ✅ เปลี่ยนจาก agentCode
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [serverStatus, setServerStatus] = useState('unknown');
@@ -18,14 +20,15 @@ function LoginForm({ onLogin }) {
       setServerStatus('online');
     } catch (error) {
       setServerStatus('offline');
-      setError('Backend server is not running. Please start the server first.');
+      setError('Backend server is not running.');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const validationError = validateAgentCode(agentCode);
+    // ✅ Validate username (ใช้ function เดิมได้เพราะ format เหมือนกัน)
+    const validationError = validateAgentCode(username);
     if (validationError) {
       setError(validationError);
       return;
@@ -35,21 +38,42 @@ function LoginForm({ onLogin }) {
     setError('');
 
     try {
-      const result = await loginAgent(agentCode.toUpperCase());
+      // ✅ Login with username
+      const result = await loginAgent(username.toUpperCase());
       
-      if (result.success) {
-        onLogin(result.data.user, result.data.token);
-      } else {
-        setError(result.error || 'Login failed');
+      console.log('🔐 Login response:', result);
+      
+      // ✅ Validate response structure
+      if (!result || !result.success) {
+        throw new Error(result?.message || 'Login failed');
       }
+
+      if (!result.user) {
+        throw new Error('Invalid response - missing user data');
+      }
+
+      if (!result.user.username) {
+        throw new Error('Invalid response - missing username');
+      }
+
+      const token = result.user.token || result.token;
+      if (!token) {
+        throw new Error('Invalid response - missing token');
+      }
+
+      console.log('✅ Login successful:', result.user);
+      
+      // ✅ Send validated data
+      onLogin(result.user, token);
+      
     } catch (err) {
-      console.error('Login error:', err);
+      console.error('❌ Login error:', err);
       
       if (err.message.includes('fetch')) {
-        setError('Cannot connect to server. Please check if backend is running.');
+        setError('Cannot connect to server. Check if backend is running.');
         setServerStatus('offline');
       } else {
-        setError(err.message || 'Network error. Please check your connection.');
+        setError(err.message || 'Network error');
       }
     } finally {
       setLoading(false);
@@ -66,7 +90,7 @@ function LoginForm({ onLogin }) {
       <div className="login-form">
         <div className="login-header">
           <h2>Agent Login</h2>
-          <p>Enter your agent code to continue</p>
+          <p>Enter your username to continue</p>
           
           <div className={`server-status ${serverStatus}`}>
             <span className="status-dot"></span>
@@ -76,14 +100,15 @@ function LoginForm({ onLogin }) {
         
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="agentCode">Agent Code</label>
+            {/* ✅ เปลี่ยน label และ id */}
+            <label htmlFor="username">Username</label>
             <input
-              id="agentCode"
+              id="username"
               type="text"
-              placeholder="e.g., AG001"
-              value={agentCode}
+              placeholder="e.g., AG001, SP001, AD001"
+              value={username}
               onChange={(e) => {
-                setAgentCode(e.target.value.toUpperCase());
+                setUsername(e.target.value.toUpperCase());
                 if (error) setError('');
               }}
               disabled={loading || serverStatus === 'offline'}
@@ -94,7 +119,7 @@ function LoginForm({ onLogin }) {
           
           <button 
             type="submit" 
-            disabled={loading || !agentCode.trim() || serverStatus === 'offline'}
+            disabled={loading || !username.trim() || serverStatus === 'offline'}
             className="login-btn"
           >
             {loading ? 'Signing in...' : 'Sign In'}
@@ -113,13 +138,14 @@ function LoginForm({ onLogin }) {
                 </button>
               )}
             </div>
-          )}
+
+        )}
         </form>
         
         <div className="login-footer">
-          <p>Sample codes: AG001, AG002, AG003</p>
+          <p>Sample codes: AG001, AG002, SP001, AD001</p>
           <p className="help-text">
-            Need help? Check if backend server is running on port 3001
+            Backend must be running on port 3001
           </p>
         </div>
       </div>
