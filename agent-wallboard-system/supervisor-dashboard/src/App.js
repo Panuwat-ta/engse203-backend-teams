@@ -1,379 +1,293 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  ThemeProvider,
-  CssBaseline,
-  Container,
-  Box,              // ← เพิ่ม
-  CircularProgress, // ← เพิ่ม
-  Typography        // ← เพิ่ม
-} from '@mui/material';
+// App.js - Version 4.0 (Supervisor Dashboard)
+
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import LoginForm from './components/LoginForm';
 import Dashboard from './components/Dashboard';
-import ErrorBoundary from './components/ErrorBoundary';
-import { connectSocket, disconnectSocket, getSocket } from './services/socket';
+import AgentList from './components/AgentList';
+import SendMessageForm from './components/SendMessageForm';
+import MessageHistory from './components/MessageHistory';
 import {
-  setToken,
-  getToken,
-  clearToken,
-  setSupervisorData,
-  getSupervisorData
-} from './services/auth';
-import theme from './theme/theme';
+  setAuthToken,
+  logout as apiLogout
+} from './services/api';
+import {
+  connectSocket,
+  disconnectSocket,
+  getSocket
+} from './services/socket';
+import logger from './utils/logger';
 import './App.css';
-import { transformAgents } from './utils/transformers';
+import './styles/components.css';
 
 function App() {
-  // STATE
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [supervisor, setSupervisor] = useState(null);
-  const [teamData, setTeamData] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [socketConnected, setSocketConnected] = useState(false);
-  const [isRestoring, setIsRestoring] = useState(true); // เพิ่ม loading state
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [error, setError] = useState(null);
+  
+  // ✅ Modal states
+  const [showSendMessage, setShowSendMessage] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState(null);
+  const [showMessageHistory, setShowMessageHistory] = useState(false);
 
   const socketRef = useRef(null);
+  const isLoggedInRef = useRef(false);
 
-  // ✅ เพิ่ม: Restore session เมื่อ component mount
   useEffect(() => {
-    const restoreSession = async () => {
-      console.log('🔄 Attempting to restore session...');
+    isLoggedInRef.current = isLoggedIn;
+  }, [isLoggedIn]);
 
-      const savedToken = getToken();
-      const savedSupervisor = getSupervisorData();
-
-      if (savedToken && savedSupervisor) {
-        console.log('✅ Found saved session:', savedSupervisor.supervisorCode);
-
-        try {
-          // ตรวจสอบว่า token ยังใช้งานได้หรือไม่
-          // โดยเรียก API ที่ต้องการ authentication
-          const response = await fetch(
-            `${process.env.REACT_APP_API_URL}/agents/team/${savedSupervisor.teamId}`,
-            {
-              headers: {
-                'Authorization': `Bearer ${savedToken}`
-              }
-            }
-          );
-
-          if (response.ok) {
-            const data = await response.json();
-
-            console.log('✅ Session is valid');
-            console.log('Raw team data from API:', data);
-
-            // ✅ Transform data โดยใช้ status จาก API
-            const transformedAgents = (data.agents || []).map(agent => ({
-              agentCode: agent.agent_code || agent.agentCode,
-              agentName: agent.agent_name || agent.agentName,
-              role: agent.role,
-              email: agent.email || '',
-              phone: agent.phone || '',
-              team_id: agent.team_id || savedSupervisor.teamId,
-              // ✅ ใช้ status จาก API แทนการ hardcode
-              currentStatus: agent.currentStatus || 'Offline',
-              isOnline: false, // จะ update ด้วย WebSocket
-              lastUpdate: agent.lastUpdate ? new Date(agent.lastUpdate) : new Date(),
-              lastSeen: agent.lastUpdate ? new Date(agent.lastUpdate) : new Date()
-            }));
-
-            console.log('✅ Transformed team data:', transformedAgents);
-
-            setSupervisor(savedSupervisor);
-            setTeamData(transformedAgents);
-            setIsLoggedIn(true);
-
-          } else {
-            console.warn('⚠️ Token expired or invalid');
-            clearToken();
-          }
-
-        } catch (error) {
-          console.error('❌ Failed to restore session:', error);
-          clearToken();
-        }
-      } else {
-        console.log('ℹ️ No saved session found');
-      }
-
-      setIsRestoring(false);
-    };
-
-    restoreSession();
+  useEffect(() => {
+    logger.info('Supervisor Dashboard initialized');
   }, []);
 
-  // WebSocket setup
+  /**
+   * ✅ WebSocket connection for Supervisors
+   */
   useEffect(() => {
-    if (isLoggedIn && supervisor) {
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔌 Setting up WebSocket connection...');
-      console.log('Supervisor:', supervisor.supervisorCode);
-      console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-
-      const socket = connectSocket(supervisor.supervisorCode);
-      socketRef.current = socket;
-
-      // Event: เชื่อมต่อสำเร็จ
-      socket.on('connect', () => {
-        console.log('✅ WebSocket connected');
-        setSocketConnected(true);
-      });
-
-      // Event: ตัดการเชื่อมต่อ
-      socket.on('disconnect', () => {
-        console.log('⚠️ WebSocket disconnected');
-        setSocketConnected(false);
-      });
-
-
-
-      // ✅ Event: รับข้อมูล online agents เมื่อเชื่อมต่อสำเร็จ
-      socket.on('connection_success', (data) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('✅ [SUPERVISOR CONNECTION SUCCESS]');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('Online agents:', data.onlineAgents);
-
-  if (data.onlineAgents && data.onlineAgents.length > 0) {
-    setTeamData(prev => {
-      const updated = prev.map(agent => {
-        const onlineAgent = data.onlineAgents.find(
-          oa => oa.agentCode === agent.agentCode
-        );
-        
-        if (onlineAgent) {
-          console.log(`  ✅ ${agent.agentCode}: online, status=${onlineAgent.status}`);
-          return {
-            ...agent,
-            isOnline: true,
-            currentStatus: onlineAgent.status || 'Available', // ✅ ใช้ status จาก backend
-            lastUpdate: new Date(onlineAgent.timestamp)
-          };
-        }
-        return agent;
-      });
-      
-      console.log('Updated team data:', updated.map(a => ({
-        code: a.agentCode,
-        online: a.isOnline,
-        status: a.currentStatus
-      })));
-      
-      return updated;
-    });
-  }
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      });
-
-
-      // Event: Agent เชื่อมต่อ (online)
-      socket.on('agent_connected', (data) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🟢 [AGENT CONNECTED]');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('Agent code:', data.agentCode);
-        console.log('Timestamp:', data.timestamp);
-
-        setTeamData(prev => {
-          console.log('Before update:', prev.map(a => ({
-            code: a.agentCode,
-            online: a.isOnline
-          })));
-
-          const updated = prev.map(agent =>
-            agent.agentCode === data.agentCode
-              ? {
-                ...agent,
-                isOnline: true,
-                currentStatus: 'Available',
-                lastSeen: data.timestamp,
-                lastUpdate: data.timestamp
-              }
-              : agent
-          );
-
-          console.log('After update:', updated.map(a => ({
-            code: a.agentCode,
-            online: a.isOnline
-          })));
-
-          return updated;
-        });
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      });
-
-      // Event: Agent ตัดการเชื่อมต่อ (offline)
-      socket.on('agent_disconnected', (data) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('🔴 [AGENT DISCONNECTED]');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('Agent code:', data.agentCode);
-
-        setTeamData(prev => prev.map(agent =>
-          agent.agentCode === data.agentCode
-            ? {
-              ...agent,
-              isOnline: false,
-              currentStatus: 'Offline',
-              lastSeen: data.timestamp
-            }
-            : agent
-        ));
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      });
-
-      // Event: Agent เปลี่ยน status
-      socket.on('agent_status_update', (data) => {
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('📊 [STATUS UPDATE]');
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log('Agent:', data.agentCode);
-        console.log('Status:', data.status);
-
-        setTeamData(prev => prev.map(agent =>
-          agent.agentCode === data.agentCode
-            ? {
-              ...agent,
-              currentStatus: data.status,
-              lastUpdate: data.timestamp
-            }
-            : agent
-        ));
-
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      });
-
-      // Event: ข้อความใหม่
-      socket.on('new_message', (message) => {
-        console.log('💬 New message:', message);
-        setMessages(prev => [...prev, message]);
-      });
-
-      return () => {
-        console.log('🧹 Cleaning up WebSocket...');
-        socket.off('connect');
-        socket.off('disconnect');
-        socket.off('agent_connected');
-        socket.off('agent_disconnected');
-        socket.off('agent_status_update');
-        socket.off('new_message');
-
-        disconnectSocket();
-        socketRef.current = null;
-        setSocketConnected(false);
-      };
-    }
-  }, [isLoggedIn, supervisor]);
-
-  // Handlers
-  const handleLogin = (loginData) => {
-    console.log('✅ Login successful');
-
-    const supervisorData = {
-      supervisorCode: loginData.data.user.agentCode,
-      name: loginData.data.user.agentName,
-      teamId: loginData.data.user.teamId,
-      teamName: loginData.data.user.teamName,
-      email: loginData.data.user.email
-    };
-
-    const rawTeamData = loginData.data.teamData || [];
-
-    // ✅ บันทึก token และ data
-    setToken(loginData.data.token);
-    setSupervisorData(supervisorData);
-
-    setSupervisor(supervisorData);
-    setTeamData(rawTeamData);
-    setIsLoggedIn(true);
-  };
-
-  const handleLogout = () => {
-    console.log('Logging out...');
-
-    // ✅ ลบ saved data
-    clearToken();
-
-    disconnectSocket();
-
-    setIsLoggedIn(false);
-    setSupervisor(null);
-    setTeamData([]);
-    setMessages([]);
-    setSocketConnected(false);
-    socketRef.current = null;
-  };
-
-  const handleSendMessage = (messageData) => {
-    console.log('📤 Sending message:', messageData);
-
-    const socket = socketRef.current || getSocket();
-
-    if (!socket || !socket.connected) {
-      console.error('❌ Socket not available');
+    if (!isLoggedIn || !supervisor) {
+      console.log('⏸️ Skipping WebSocket - not logged in');
       return;
     }
 
-    socket.emit('send_message', {
-      fromCode: supervisor.supervisorCode,
-      ...messageData
+    if (!supervisor.username) {
+      console.error('❌ Supervisor missing username:', supervisor);
+      setError('Invalid supervisor data');
+      return;
+    }
+
+    // ✅ ใช้ username เป็น code สำหรับ WebSocket
+    const supervisorCode = supervisor.username;
+    logger.log('🔌 Setting up WebSocket for', supervisorCode, supervisor.role);
+    
+    const socket = connectSocket(supervisorCode, supervisor.role);
+    
+    if (!socket) {
+      console.error('❌ Failed to create socket');
+      setError('Failed to connect to server');
+      return;
+    }
+
+    socketRef.current = socket;
+
+    const handlers = {
+      connect: () => {
+        logger.log('✅ WebSocket connected');
+        setConnectionStatus('connected');
+        setError(null);
+      },
+
+      disconnect: (reason) => {
+        logger.log('🔌 WebSocket disconnected:', reason);
+        setConnectionStatus('disconnected');
+      },
+
+      connect_error: (error) => {
+        logger.error('❌ WebSocket error:', error);
+        setConnectionStatus('error');
+        setError('Connection error');
+      },
+
+      reconnect: (attemptNumber) => {
+        logger.log('🔄 Reconnected after', attemptNumber, 'attempts');
+        setConnectionStatus('connected');
+        setError(null);
+      },
+
+      connection_success: (data) => {
+        logger.log('✅ Auth successful:', data);
+      },
+
+      connection_error: (error) => {
+        logger.error('❌ Connection error:', error);
+        setError(error.message || 'Connection error');
+      },
+
+      // ✅ Agent status updates
+      agent_status_updated: (data) => {
+        logger.log('📊 Agent status updated:', data);
+        // Trigger agent list refresh
+        // You can emit custom event here
+        window.dispatchEvent(new CustomEvent('agent-status-updated', { detail: data }));
+      },
+
+      // ✅ New message notification
+      message_sent: (data) => {
+        logger.log('✅ Message sent notification:', data);
+        // Show toast notification
+        window.dispatchEvent(new CustomEvent('message-sent', { detail: data }));
+      },
+
+      // ✅ Agent connected/disconnected
+      agent_connected: (data) => {
+        logger.log('✅ Agent connected:', data);
+        window.dispatchEvent(new CustomEvent('agent-connected', { detail: data }));
+      },
+
+      agent_disconnected: (data) => {
+        logger.log('🔌 Agent disconnected:', data);
+        window.dispatchEvent(new CustomEvent('agent-disconnected', { detail: data }));
+      }
+    };
+
+    // Register handlers
+    Object.entries(handlers).forEach(([event, handler]) => {
+      socket.on(event, handler);
     });
 
-    setMessages(prev => [...prev, {
-      ...messageData,
-      fromCode: supervisor.supervisorCode,
-      timestamp: new Date()
-    }]);
-  };
+    // Cleanup
+    return () => {
+      logger.log('🧹 Cleanup WebSocket');
+      Object.entries(handlers).forEach(([event, handler]) => {
+        socket.off(event, handler);
+      });
+      disconnectSocket();
+      socketRef.current = null;
+      setConnectionStatus('disconnected');
+    };
+  }, [isLoggedIn, supervisor]);
 
-  // ✅ แสดง loading ระหว่าง restore session
-  if (isRestoring) {
-    return (
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Container
-          maxWidth="xl"
-          sx={{
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            minHeight: '100vh'
-          }}
-        >
-          <Box textAlign="center">
-            <CircularProgress />
-            <Typography variant="body2" sx={{ mt: 2 }}>
-              Loading...
-            </Typography>
-          </Box>
-        </Container>
-      </ThemeProvider>
-    );
-  }
+  /**
+   * ✅ Handle login
+   */
+  const handleLogin = useCallback(async (userData, token) => {
+    console.log('🔐 Supervisor login successful:', userData);
+
+    if (!userData || !userData.username) {
+      console.error('❌ Invalid login data:', userData);
+      setError('Invalid supervisor data');
+      return;
+    }
+
+    // ✅ Verify role
+    if (userData.role !== 'Supervisor') {
+      setError('Access denied. Supervisor role required.');
+      return;
+    }
+
+    setAuthToken(token);
+    setSupervisor(userData);
+    setIsLoggedIn(true);
+    setError(null);
+  }, []);
+
+  /**
+   * ✅ Handle logout
+   */
+  const handleLogout = useCallback(async () => {
+    logger.log('👋 Logging out');
+
+    try {
+      await apiLogout();
+    } catch (error) {
+      logger.error('Logout failed:', error);
+    }
+
+    disconnectSocket();
+    setIsLoggedIn(false);
+    setSupervisor(null);
+    setConnectionStatus('disconnected');
+    setError(null);
+    setShowSendMessage(false);
+    setSelectedAgent(null);
+    setShowMessageHistory(false);
+  }, []);
+
+  /**
+   * ✅ Handle send message
+   */
+  const handleSendMessage = useCallback((agent) => {
+    setSelectedAgent(agent);
+    setShowSendMessage(true);
+  }, []);
+
+  /**
+   * ✅ Handle view history
+   */
+  const handleViewHistory = useCallback((agent) => {
+    setSelectedAgent(agent);
+    setShowMessageHistory(true);
+  }, []);
+
+  /**
+   * ✅ Handle message sent success
+   */
+  const handleMessageSent = useCallback((message) => {
+    console.log('✅ Message sent:', message);
+    // You can show a toast notification here
+  }, []);
+
+  const clearError = useCallback(() => {
+    setError(null);
+  }, []);
 
   return (
-    <ErrorBoundary>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <Container maxWidth="xl" sx={{ py: 2 }}>
-          {!isLoggedIn ? (
-            <LoginForm onLogin={handleLogin} />
-          ) : (
-            <Dashboard
-              supervisor={supervisor}
-              teamData={teamData}
-              messages={messages}
-              socketConnected={socketConnected}
-              onSendMessage={handleSendMessage}
-              onLogout={handleLogout}
-            />
+    <div className="app supervisor-dashboard">
+      {/* Connection Status */}
+      <div className={`connection-status ${connectionStatus}`}>
+        <div className="status-indicator"></div>
+        <span>
+          {connectionStatus === 'connected' && '✅ Connected'}
+          {connectionStatus === 'disconnected' && '⚠️ Disconnected'}
+          {connectionStatus === 'error' && '❌ Connection Error'}
+        </span>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="error-banner">
+          <span>{error}</span>
+          <button onClick={clearError} className="error-close">×</button>
+        </div>
+      )}
+
+      {/* Main Content */}
+      {!isLoggedIn ? (
+        <LoginForm onLogin={handleLogin} />
+      ) : (
+        <>
+          {/* Dashboard Header */}
+          <Dashboard 
+            supervisor={supervisor}
+            onLogout={handleLogout}
+            connectionStatus={connectionStatus}
+          />
+
+          {/* Agent List */}
+          <AgentList
+            supervisor={supervisor}
+            onSendMessage={handleSendMessage}
+            onViewHistory={handleViewHistory}
+          />
+
+          {/* Send Message Modal */}
+          {showSendMessage && (
+            <div className="modal-overlay" onClick={() => setShowSendMessage(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <SendMessageForm
+                  supervisor={supervisor}
+                  selectedAgent={selectedAgent}
+                  onClose={() => setShowSendMessage(false)}
+                  onSuccess={handleMessageSent}
+                />
+              </div>
+            </div>
           )}
-        </Container>
-      </ThemeProvider>
-    </ErrorBoundary>
+
+          {/* Message History Modal */}
+          {showMessageHistory && selectedAgent && (
+            <div className="modal-overlay" onClick={() => setShowMessageHistory(false)}>
+              <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                <MessageHistory
+                  agent={selectedAgent}
+                  onClose={() => setShowMessageHistory(false)}
+                />
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 
